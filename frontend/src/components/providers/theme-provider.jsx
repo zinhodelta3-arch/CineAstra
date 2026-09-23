@@ -1,6 +1,7 @@
 "use client"
 
 import { ThemeProvider as NextThemesProvider } from "next-themes"
+import { AppearanceProvider } from "@/components/providers/appearance-provider"
 
 export function ThemeProvider({ children }) {
   return (
@@ -8,10 +9,11 @@ export function ThemeProvider({ children }) {
       attribute="class"
       defaultTheme="system"
       enableSystem
+      enableColorScheme
       storageKey="cineastra-mode"
       disableTransitionOnChange
     >
-      {children}
+      <AppearanceProvider>{children}</AppearanceProvider>
     </NextThemesProvider>
   )
 }

@@ -1,0 +1,75 @@
+/* Paleta enviada pelo usuário via Adobe Color: #353323, #7C1029, #971D00, #FAD241, #ECE1DC.
+   Tons auxiliares derivados para superfícies e contraste nos modos claro e escuro. */
+html[data-theme="cineastra"] {
+  --background: #ECE1DC;
+  --foreground: #353323;
+  --card: #F6EFEB;
+  --card-foreground: #353323;
+  --popover: #F6EFEB;
+  --popover-foreground: #353323;
+  --primary: #7C1029;
+  --primary-foreground: #ECE1DC;
+  --secondary: #353323;
+  --secondary-foreground: #ECE1DC;
+  --muted: #DDD0C8;
+  --muted-foreground: #5E574A;
+  --accent: #FAD241;
+  --accent-foreground: #353323;
+  --destructive: #971D00;
+  --destructive-foreground: #ECE1DC;
+  --border: #AB998D;
+  --input: #AB998D;
+  --ring: #7C1029;
+  --chart-1: #7C1029;
+  --chart-2: #971D00;
+  --chart-3: #FAD241;
+  --chart-4: #353323;
+  --chart-5: #AB998D;
+  --radius: 0.625rem;
+  --sidebar: #E2D5CD;
+  --sidebar-foreground: #353323;
+  --sidebar-primary: #7C1029;
+  --sidebar-primary-foreground: #ECE1DC;
+  --sidebar-accent: #FAD241;
+  --sidebar-accent-foreground: #353323;
+  --sidebar-border: #AB998D;
+  --sidebar-ring: #7C1029;
+  --theme-font-sans: var(--font-geist-sans), sans-serif;
+  --theme-font-serif: Georgia, serif;
+  --theme-font-mono: var(--font-geist-mono), monospace;
+}
+
+html.dark[data-theme="cineastra"] {
+  --background: #242319;
+  --foreground: #ECE1DC;
+  --card: #353323;
+  --card-foreground: #ECE1DC;
+  --popover: #353323;
+  --popover-foreground: #ECE1DC;
+  --primary: #FAD241;
+  --primary-foreground: #353323;
+  --secondary: #7C1029;
+  --secondary-foreground: #ECE1DC;
+  --muted: #403D2E;
+  --muted-foreground: #C4B7AE;
+  --accent: #7C1029;
+  --accent-foreground: #ECE1DC;
+  --destructive: #FF967B;
+  --destructive-foreground: #353323;
+  --border: #807566;
+  --input: #807566;
+  --ring: #FAD241;
+  --chart-1: #FAD241;
+  --chart-2: #FF967B;
+  --chart-3: #D78298;
+  --chart-4: #ECE1DC;
+  --chart-5: #C4B7AE;
+  --sidebar: #2D2B1E;
+  --sidebar-foreground: #ECE1DC;
+  --sidebar-primary: #FAD241;
+  --sidebar-primary-foreground: #353323;
+  --sidebar-accent: #7C1029;
+  --sidebar-accent-foreground: #ECE1DC;
+  --sidebar-border: #807566;
+  --sidebar-ring: #FAD241;
+}
