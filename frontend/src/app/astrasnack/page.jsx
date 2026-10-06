@@ -313,7 +313,7 @@ export default function AstraSnackPage() {
             <div>
               <div className="mb-2 flex items-center gap-2 text-[10px] font-bold tracking-[.3em] text-primary uppercase">
                 <Ticket className="size-3.5" />
-                CineAstra • Bomboniere
+                CineAstra • AstraSnack
               </div>
               <h1 className="f-display text-5xl font-black tracking-tight md:text-7xl">
                 ASTRASNACK<span className="text-primary">.</span>
