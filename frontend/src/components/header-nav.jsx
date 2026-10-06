@@ -18,7 +18,7 @@ const navigation = [
   { label: "Início", href: "/", icon: House },
   { label: "Filmes", icon: Film },
   { label: "Cinemas", icon: MapPin },
-  { label: "Bomboniere", icon: Popcorn },
+  { label: "AstraSnack", href: "/astrasnack", icon: Popcorn },
   { label: "Experiências", icon: Sparkles },
 ]
 
