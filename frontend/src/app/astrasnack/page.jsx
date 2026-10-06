@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
   ChevronLeft,
   ChevronRight,
@@ -35,7 +35,53 @@ const CATEGORIES = [
 // Contrato preparado para o catálogo que virá do backend.
 // Exemplo futuro:
 // { id, name, categoryId, description, price, image, badge }
-const PRODUCTS = []
+const U = (id, w = 1800) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=${w}&q=88`
+
+const BANNERS = [
+  {
+    id: "banner-1",
+    eyebrow: "AstraSnack • Combos",
+    title: "Vários sabores. Uma só sessão.",
+    description: "Escolha seu combo favorito e deixe a experiência CineAstra ainda mais completa.",
+    image: U("photo-1585647347384-2593bc35786b"),
+  },
+  {
+    id: "banner-2",
+    eyebrow: "AstraSnack • Pipocas",
+    title: "O clássico que nunca sai de cartaz.",
+    description: "Pipoca, cinema e aquele momento em que as luzes se apagam.",
+    image: U("photo-1588614959060-4d144f28b207"),
+  },
+  {
+    id: "banner-3",
+    eyebrow: "AstraSnack • Para compartilhar",
+    title: "Uma sessão pede bons acompanhamentos.",
+    description: "Monte seu pedido para dividir — ou não dividir — durante o filme.",
+    image: U("photo-1578849278619-74b2c2bc9852"),
+  },
+  {
+    id: "banner-4",
+    eyebrow: "AstraSnack • Doces",
+    title: "Seu filme também merece um final doce.",
+    description: "Sabores para acompanhar cada cena, do primeiro trailer aos créditos finais.",
+    image: U("photo-1578985545062-69928b1d9587"),
+  },
+]
+
+// Apenas um item real para validar a experiência de produto/drawer.
+// O restante do catálogo será entregue pelo backend posteriormente.
+const PRODUCTS = [
+  {
+    id: "c-1",
+    name: "Combo CineAstra Supreme",
+    categoryId: "combos",
+    category: "Combos",
+    description: "1 Pipoca Balde Especial + 2 Refrigerantes 1L + 1 M&M's Gigante.",
+    price: 52.9,
+    image: U("photo-1585647347384-2593bc35786b", 1200),
+    badge: "Mais vendido",
+  },
+]
 
 const SECTIONS = [
   { id: "ofertas", title: "Ofertas", tone: "cyan", count: 5 },
@@ -200,6 +246,92 @@ function ProductCard({ product, onOpen }) {
   )
 }
 
+function BannerCarousel() {
+  const [current, setCurrent] = useState(0)
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrent((value) => (value + 1) % BANNERS.length)
+    }, 6500)
+
+    return () => clearInterval(timer)
+  }, [])
+
+  const banner = BANNERS[current]
+
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-border/70 bg-card shadow-2xl">
+      <div className="relative min-h-[280px] md:min-h-[390px]">
+        {BANNERS.map((item, index) => (
+          <div
+            key={item.id}
+            className={`absolute inset-0 transition-opacity duration-700 ${index === current ? "opacity-100" : "pointer-events-none opacity-0"}`}
+          >
+            <img
+              src={item.image}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-black via-black/70 to-black/15" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-black/20" />
+          </div>
+        ))}
+
+        <div className="astra-perf absolute top-0 right-0 left-0 z-10 h-5 text-white/20" />
+
+        <div className="relative z-10 flex min-h-[280px] items-end p-6 md:min-h-[390px] md:p-10">
+          <div className="max-w-2xl text-white">
+            <div className="mb-2 text-[10px] font-bold tracking-[.3em] text-primary uppercase">
+              {banner.eyebrow}
+            </div>
+            <h2 className="f-display text-4xl font-black leading-none md:text-6xl">
+              {banner.title}
+            </h2>
+            <p className="mt-3 max-w-xl text-sm leading-6 text-white/75 md:text-base">
+              {banner.description}
+            </p>
+          </div>
+        </div>
+
+        <div className="absolute right-4 bottom-4 z-20 flex items-center gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="rounded-full border border-white/20 bg-black/35 text-white hover:bg-black/60 hover:text-white"
+            onClick={() => setCurrent((value) => (value - 1 + BANNERS.length) % BANNERS.length)}
+            aria-label="Banner anterior"
+          >
+            <ChevronLeft />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="rounded-full border border-white/20 bg-black/35 text-white hover:bg-black/60 hover:text-white"
+            onClick={() => setCurrent((value) => (value + 1) % BANNERS.length)}
+            aria-label="Próximo banner"
+          >
+            <ChevronRight />
+          </Button>
+        </div>
+
+        <div className="absolute bottom-6 left-6 z-20 flex gap-1.5 md:left-10">
+          {BANNERS.map((item, index) => (
+            <button
+              key={item.id}
+              type="button"
+              aria-label={`Ir para o banner ${index + 1}`}
+              onClick={() => setCurrent(index)}
+              className={`h-1.5 rounded-full transition-all ${index === current ? "w-8 bg-primary" : "w-2 bg-white/45"}`}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function ProductDrawer({ product, open, onOpenChange, quantity, setQuantity, onAdd }) {
   if (!product) return null
 
@@ -304,7 +436,7 @@ export default function AstraSnackPage() {
   }
 
   return (
-    <main className="astra-grain min-h-screen bg-background">
+    <main className="astra-grain min-h-screen bg-black text-[#ECE1DC] selection:bg-[#691528] selection:text-[#FAD241]">
       <CinemaStyles />
 
       <section className="border-b border-border/70">
@@ -334,19 +466,7 @@ export default function AstraSnackPage() {
             </div>
           </div>
 
-          <div className="astra-banner relative rounded-2xl border border-border/70 px-5 py-8 text-center text-white shadow-2xl md:px-10 md:py-12">
-            <div className="relative z-10 mx-auto max-w-3xl">
-              <div className="mb-3 text-[10px] font-bold tracking-[.3em] text-primary uppercase">
-                AstraSnack • em cartaz
-              </div>
-              <div className="f-display text-3xl font-black md:text-5xl">
-                Vários sabores. Uma só sessão.
-              </div>
-              <p className="mx-auto mt-2 max-w-xl text-sm text-white/70">
-                Área preparada para receber ofertas, combos e produtos diretamente do catálogo do backend.
-              </p>
-            </div>
-          </div>
+          <BannerCarousel />
         </div>
       </section>
 
