@@ -14,6 +14,7 @@ import {
   appearanceValues,
   DEFAULT_APPEARANCE,
 } from "@/lib/themes";
+import Footer from "@/components/Footer";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -77,6 +78,7 @@ export default function RootLayout({ children }) {
         <ThemeProvider>
           <Header />
           {children}
+          
         </ThemeProvider>
       </body>
     </html>
