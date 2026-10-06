@@ -1,115 +1,81 @@
 import mysql from 'mysql2/promise';
-import bcrypt from 'bcryptjs';
-import dotenv from 'dotenv';
+import { ApiError } from '../utils/ApiError.js';
+import { report } from '../utils/telemetry.js';
 
-// Carregar variáveis do arquivo .env
-dotenv.config();
-
-// Configuração do pool de conexões
-const pool = mysql.createPool({
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT, 
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0
-});
-
-// Função para obter uma conexão do pool
-async function getConnection() {
-    return pool.getConnection();
+export function poolOptions(config) {
+    return { host: config.host, port: config.port, user: config.user, password: config.password, database: config.database,
+        waitForConnections: true, connectionLimit: config.connectionLimit, queueLimit: config.queueLimit,
+        connectTimeout: config.timeout, enableKeepAlive: true, timezone: 'Z', dateStrings: true,
+        supportBigNumbers: true, bigNumberStrings: true, decimalNumbers: false, multipleStatements: false,
+        charset: 'utf8mb4', flags: '-LOCAL_FILES', maxPreparedStatements: 100 };
 }
 
-// Função para ler registros (um ou múltiplos)
-async function read(table, where = null) {
-    const connection = await getConnection();
-    try {
-        let sql = `SELECT * FROM ${table}`;
-        if (where) {
-            sql += ` WHERE ${where}`;
+export function createDatabase(config, suppliedPool) {
+    const pool = suppliedPool ?? mysql.createPool(poolOptions(config));
+    let closed = false;
+    async function acquire() {
+        if (closed) throw ApiError.indisponivel();
+        let expired = false;
+        let timer;
+        const pending = pool.getConnection().then(connection => {
+            if (expired) { connection.release(); throw ApiError.indisponivel(); }
+            return connection;
+        });
+        try {
+            return await Promise.race([pending, new Promise((_, reject) => {
+                timer = setTimeout(() => { expired = true; reject(ApiError.indisponivel()); }, config.timeout);
+            })]);
+        } catch { throw ApiError.indisponivel(); }
+        finally { clearTimeout(timer); }
+    }
+    async function withConnection(operation, { signal } = {}) {
+        if (signal?.aborted) throw ApiError.indisponivel();
+        const raw = await acquire();
+        let destroyed = false;
+        const destroy = () => { if (!destroyed) { destroyed = true; raw.destroy(); } };
+        let rejectDeadline;
+        const deadline = new Promise((_, reject) => { rejectDeadline = reject; });
+        const abort = () => { destroy(); rejectDeadline(ApiError.indisponivel()); };
+        signal?.addEventListener('abort', abort, { once: true });
+        // Deadline total: cancela socket MySQL e rejeita também um callback que nunca conclui.
+        const timer = setTimeout(abort, config.timeout);
+        const execute = async (sql, params = []) => {
+            if (destroyed || signal?.aborted) throw ApiError.indisponivel();
+            try { return await raw.execute(sql, params); }
+            catch (error) { if (destroyed) throw ApiError.indisponivel(); throw error; }
+        };
+        try {
+            return await Promise.race([deadline, (async () => {
+                await execute("SET SESSION time_zone = '+00:00'");
+                if (signal?.aborted) throw ApiError.indisponivel();
+                const result = await operation({ execute });
+                if (destroyed) throw ApiError.indisponivel();
+                return result;
+            })()]);
+        } finally {
+            clearTimeout(timer);
+            signal?.removeEventListener('abort', abort);
+            if (!destroyed) raw.release();
         }
-
-        const [rows] = await connection.execute(sql);
-        return rows;
-    } finally {
-        connection.release();
     }
-}
-
-// Função para inserir um novo registro
-async function create(table, data) {
-    const connection = await getConnection();
-    try {
-        const columns = Object.keys(data).join(', ');
-        const placeholders = Array(Object.keys(data).length).fill('?').join(', ');
-        const sql = `INSERT INTO ${table} (${columns}) VALUES (${placeholders})`;
-        const values = Object.values(data);
-
-        const [result] = await connection.execute(sql, values);
-        return result.insertId;
-    } finally {
-        connection.release();
+    const execute = (sql, params = [], options) => withConnection(c => c.execute(sql, params), options);
+    async function transaction(operation, options) {
+        return withConnection(async connection => {
+            await connection.execute('START TRANSACTION');
+            try {
+                const result = await operation(connection);
+                await connection.execute('COMMIT');
+                return result;
+            } catch (error) {
+                try { await connection.execute('ROLLBACK'); }
+                catch { report('transaction_rollback_failed'); }
+                throw error;
+            }
+        }, options);
     }
+    return {
+        execute, transaction, withConnection,
+        async ping(options) { await execute('SELECT 1 AS ok', [], options); },
+        async close() { if (!closed) { closed = true; await pool.end(); } }
+    };
 }
-
-// Função para atualizar um registro
-async function update(table, data, where) {
-    const connection = await getConnection();
-    try {
-        const set = Object.keys(data)
-            .map(column => `${column} = ?`)
-            .join(', ');
-
-        const sql = `UPDATE ${table} SET ${set} WHERE ${where}`;
-        const values = Object.values(data);
-
-        const [result] = await connection.execute(sql, [...values]);
-        return result.affectedRows;
-    } finally {
-        connection.release();
-    }
-}
-
-// Função para excluir um registro
-async function deleteRecord(table, where) {
-    const connection = await getConnection();
-    try {
-        const sql = `DELETE FROM ${table} WHERE ${where}`;
-        const [result] = await connection.execute(sql);
-        return result.affectedRows;
-    } finally {
-        connection.release();
-    }
-}
-
-// Função para comparar senha com hash
-async function comparePassword(password, hash) {
-    try {
-        return await bcrypt.compare(password, hash);
-    } catch (error) {
-        console.error('Erro ao comparar senha:', error);
-        return false;
-    }
-}
-
-// Função para gerar hash da senha
-async function hashPassword(password) {
-    try {
-        return await bcrypt.hash(password, 10);
-    } catch (error) {
-        console.error('Erro ao gerar hash da senha:', error);
-        throw error;
-    }
-}
-
-export { 
-    create, 
-    read, 
-    update, 
-    deleteRecord, 
-    comparePassword, 
-    hashPassword,
-    getConnection
-};

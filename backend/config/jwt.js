@@ -1,28 +1,18 @@
-import dotenv from 'dotenv';
+import jwt from 'jsonwebtoken';
+import { randomUUID } from 'node:crypto';
+import { idString } from '../utils/dto.js';
 
-// Carregar variáveis do arquivo .env
-dotenv.config();
-
-// Configurações JWT
-export const JWT_CONFIG = {
-    secret: process.env.JWT_SECRET,
-    expiresIn: process.env.JWT_EXPIRES_IN || '1h'
-};
-
-// Configurações de Upload
-export const UPLOAD_CONFIG = {
-    path: process.env.UPLOAD_PATH || './uploads',
-    maxFileSize: parseInt(process.env.MAX_FILE_SIZE) || 5242880, // 5MB
-    allowedTypes: process.env.ALLOWED_FILE_TYPES ? 
-        process.env.ALLOWED_FILE_TYPES.split(',') : 
-        [
-            'image/jpeg', 'image/png', 'image/gif', 'image/webp',
-            'application/pdf', 'application/msword', 
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            'application/vnd.ms-excel',
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'text/plain', 'text/csv',
-            'application/zip', 'application/x-rar-compressed'
-        ]
-};
-
+export function createJwt(config) {
+    return {
+        signAccess({ userId, sessionId }) {
+            return jwt.sign({ sid: idString(sessionId), jti: randomUUID(), purpose: 'access' }, config.secret,
+                { algorithm: 'HS256', issuer: config.issuer, audience: config.audience, subject: idString(userId), expiresIn: config.ttl });
+        },
+        verify(token) {
+            const claims = jwt.verify(token, config.secret, { algorithms: ['HS256'], issuer: config.issuer, audience: config.audience, maxAge: config.ttl });
+            if (typeof claims !== 'object' || claims.purpose !== 'access' || !Number.isInteger(claims.exp) || !Number.isInteger(claims.iat) || claims.iat > Math.floor(Date.now() / 1000) + 5 || claims.exp - claims.iat > config.ttl || typeof claims.jti !== 'string' || claims.jti.length > 100) throw new Error('Invalid claims');
+            idString(claims.sub); idString(claims.sid);
+            return claims;
+        }
+    };
+}

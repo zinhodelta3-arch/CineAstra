@@ -1,51 +1,22 @@
-// Classe de erro customizada para a API
 export class ApiError extends Error {
-    constructor(mensagem, statusCode = 500, detalhes = null) {
-        super(mensagem);
-        this.statusCode = statusCode;
-        this.detalhes = detalhes;
-        this.timestamp = new Date().toISOString();
+    constructor(message, statusCode = 500, details = null, code = 'INTERNAL_ERROR') {
+        super(message);
         this.name = 'ApiError';
-        
-        // Mantém o stack trace
-        Error.captureStackTrace(this, this.constructor);
+        this.statusCode = statusCode;
+        this.code = code;
+        this.details = details;
     }
-    
-    // Método estático para erros de validação
-    static validacao(mensagem, detalhes = null) {
-        return new ApiError(mensagem, 400, detalhes);
-    }
-    
-    // Método estático para erros não encontrados
-    static naoEncontrado(recurso = 'Recurso') {
-        return new ApiError(`${recurso} não encontrado`, 404);
-    }
-    
-    // Método estático para erros de autenticação
-    static naoAutorizado(mensagem = 'Não autorizado') {
-        return new ApiError(mensagem, 401);
-    }
-    
-    // Método estático para erros de acesso negado
-    static acessoNegado(mensagem = 'Acesso negado') {
-        return new ApiError(mensagem, 403);
-    }
-    
-    // Método estático para erros internos
-    static erroInterno(mensagem = 'Erro interno do servidor') {
-        return new ApiError(mensagem, 500);
-    }
-    
-    // Converter para formato JSON de resposta
-    toJSON() {
-        return {
-            sucesso: false,
-            erro: this.name,
-            mensagem: this.message,
-            statusCode: this.statusCode,
-            timestamp: this.timestamp,
-            ...(this.detalhes && { detalhes: this.detalhes })
-        };
+    static validacao(message = 'Entrada inválida', details = null) { return new ApiError(message, 422, details, 'VALIDATION_ERROR'); }
+    static naoEncontrado() { return new ApiError('Recurso não encontrado', 404, null, 'NOT_FOUND'); }
+    static naoAutorizado() { return new ApiError('Autenticação necessária ou inválida', 401, null, 'UNAUTHENTICATED'); }
+    static acessoNegado() { return new ApiError('Acesso negado', 403, null, 'FORBIDDEN'); }
+    static erroInterno() { return new ApiError('Erro interno do servidor', 500); }
+    static indisponivel() { return new ApiError('Dependência indisponível', 503, null, 'DEPENDENCY_UNAVAILABLE'); }
+    toJSON(requestId) {
+        const safeDetails = Array.isArray(this.details) ? this.details
+            .filter(d => d && /^[a-zA-Z0-9_.-]{1,80}$/.test(d.field) && /^[A-Z_]{1,50}$/.test(d.code))
+            .map(d => ({ field: d.field, code: d.code })).slice(0, 20) : [];
+        return { success: false, code: this.code, message: this.statusCode >= 500 ? (this.statusCode === 503 ? 'Dependência indisponível' : 'Erro interno do servidor') : this.message,
+            requestId, ...(safeDetails.length && { details: safeDetails }) };
     }
 }
-

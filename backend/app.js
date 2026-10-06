@@ -1,93 +1,60 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import dotenv from 'dotenv';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import swaggerUi from 'swagger-ui-express';
+import { readFileSync } from 'node:fs';
+import { ApiError } from './utils/ApiError.js';
+import { requestId, deadline } from './middlewares/requestMiddleware.js';
+import { logMiddleware } from './middlewares/logMiddleware.js';
+import { errorMiddleware } from './middlewares/errorMiddleware.js';
+import { createAuthMiddleware } from './middlewares/authMiddleware.js';
+import { createLimits } from './middlewares/rateLimitMiddleware.js';
+import { createJwt } from './config/jwt.js';
+import { createAccessService } from './services/accessService.js';
+import { createUserAccessModel } from './models/userAccessModel.js';
+import { createHealthService } from './services/healthService.js';
+import { createHealthController } from './controllers/healthController.js';
+import { infrastructureRoutes } from './routes/infrastructureRoutes.js';
+import { unavailableCaptchaProvider } from './providers/captchaProvider.js';
 
-// Importar ROTAS
+const specification = JSON.parse(readFileSync(new URL('./docs/openapi.json', import.meta.url), 'utf8'));
 
-// Importar middlewares
-import { logMiddleware } from './middlewares/logMiddleware';
-import { errorMiddleware } from './middlewares/errorMiddleware';
-
-//Careggar .env
-dotenv.config();
-
-const app = express();
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-//configurações server
-const PORT = process.env.PORT || 3000;
-
-//middlewares globais
-
-app.use(helmet({
-    crossOriginResourcePolicy: { policy: 'cross-origin'}
-}))
-
-// Configuração CORS global
-app.use(cors({
-    origin: '*', // Permitir todas as origens. Ajuste conforme necessário. Ex.: 'http://meufrontend.com'
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Métodos permitidos
-    allowedHeaders: ['Content-Type', 'Authorization'], // Cabeçalhos permitidos
-    preflightContinue: false, // Não passar para o próximo middleware
-    optionsSuccessStatus: 200 // Responder com 200 para requisições OPTIONS
-}));
-
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-//servir arquivos estáticos
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
-//middleare de log
-app.use(logMiddleware);
-
-//Rotas api use
-//exemplo:
-app.use('/api/auth', authRotas);
-
-//rota raiz
-app.get('/', (req, res) => {
-    res.json({
-        sucesso: true,
-        mensagem: 'API de gestão para loja de roupas',
-        versao: '0.0.1',
-        rotas: {
-            autenticacao: '/api/auth',
-            produtos: '/api/produtos',
-            categorias: '/api/categorias',
-            subcategorias: '/api/subcategorias',
-            cores: '/api/cores',
-            tamanhos: '/api/tamanhos',
-            modelos: '/api/modelos'
-        },
-        documentacao: {
-            login: 'POST /api/auth/login',
-            registrar: 'POST /api/auth/registrar'
-        }
-    })
-})
-
-//rota não encontrada
-app.use('*', (req, res) => {
-    res.status(404).json({
-        sucesso: false,
-        erro: 'página não encontrada',
-        mensagem: `a rota ${req.method} ${req.originalUrl} não foi encontrada`
-    })
-})
-
-//middleware de erro
-app.use(errorMiddleware);
-
-//iniciar servidor
-app.listen(PORT, () => {
-    console.log(`acesse http://localhost:${PORT}`);
-    console.log('API de gestão para loja de roupas')
-    console.log(`ambiente: ${process.env.NODE_ENV || 'development'}`)
-})
-
-export default app;
+export function createApp({ config, database, logQueue, retention, sessionProvider, storeFactory, lifecycle = { stopping: false }, registerRoutes }) {
+    const app = express();
+    app.disable('x-powered-by');
+    app.set('trust proxy', config.trustProxy.length ? config.trustProxy : false);
+    app.set('json replacer', (key, value) => typeof value === 'bigint' ? value.toString() : value);
+    const limits = createLimits(config, storeFactory);
+    const tokens = createJwt(config.jwt);
+    const auth = createAuthMiddleware(tokens, createAccessService(createUserAccessModel(database), sessionProvider));
+    const dependencies = { auth, limits: limits.flows, captcha: unavailableCaptchaProvider() };
+    app.locals.close = () => limits.close();
+    app.use(requestId);
+    app.use(logMiddleware(logQueue, { sampleRate: config.logging.sampleRate }));
+    app.use(helmet());
+    app.use(deadline(config.httpTimeout));
+    app.use(limits.general);
+    app.use(cors({ origin(origin, cb) {
+        if (!origin || config.origins.includes(origin)) cb(null, true);
+        else cb(new ApiError('Origem não permitida', 403, null, 'CORS_DENIED'));
+    }, methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key'], exposedHeaders: ['X-Request-Id', 'Retry-After'], credentials: false, maxAge: 600 }));
+    app.use(express.json({ limit: config.bodyLimit, strict: true, inflate: false }));
+    app.use(express.urlencoded({ limit: config.bodyLimit, extended: false, parameterLimit: 50, inflate: false }));
+    app.use(infrastructureRoutes(createHealthController(createHealthService(database, retention, lifecycle))));
+    if (config.docsEnabled) {
+        const spec = { ...specification, servers: [{ url: config.publicOrigin }] };
+        app.get('/openapi.json', (req, res) => { res.set('Cache-Control', 'no-store'); res.json(spec); });
+        // Ajuste CSP apenas nesta UI; nenhuma lib externa, não relaxar API global.
+        app.use('/api-docs', helmet.contentSecurityPolicy({ directives: { defaultSrc: ["'self'"], scriptSrc: ["'self'"], styleSrc: ["'self'", "'unsafe-inline'"], imgSrc: ["'self'", 'data:'], connectSrc: ["'self'"], upgradeInsecureRequests: null } }),
+            (req, res, next) => { res.set('Cache-Control', 'no-store'); next(); },
+            swaggerUi.serveFiles(spec, { swaggerOptions: { persistAuthorization: false, validatorUrl: null } }),
+            swaggerUi.setup(spec, { swaggerOptions: { persistAuthorization: false, validatorUrl: null }, customSiteTitle: 'CineAstra API' }));
+    }
+    // Único ponto de composição para módulos futuros e fixtures explícitas de testes.
+    registerRoutes?.(app, dependencies);
+    app.use((req, res, next) => next(ApiError.naoEncontrado()));
+    app.use(errorMiddleware);
+    return app;
+}
+export default createApp;

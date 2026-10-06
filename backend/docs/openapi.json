@@ -1,0 +1,74 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "CineAstra API — infraestrutura",
+    "version": "1.0.0",
+    "description": "Prompt 01. Somente infraestrutura integrada. Prefixo de domínios futuros: /api. Autenticação bearer JWT HS256, issuer/audience e sessão revogável; nenhum login/domínio implementado aqui. Até o Prompt 02 integrar sessão/2FA, autenticação válida falha fechada com 503. Cookies não adotados. Sem alegação de conformidade ou disponibilidade produtiva."
+  },
+  "servers": [{ "url": "http://localhost:3001", "description": "Desenvolvimento; runtime usa PUBLIC_ORIGIN validado" }],
+  "tags": [{ "name": "Infraestrutura" }, { "name": "Documentação" }],
+  "security": [{ "bearerAuth": [] }],
+  "paths": {
+    "/": {
+      "get": {
+        "operationId": "getApiInfo", "tags": ["Infraestrutura"], "summary": "Identificação pública da API", "security": [],
+        "responses": {
+          "200": { "description": "Informação pública, sem dados internos", "headers": { "X-Request-Id": { "$ref": "#/components/headers/RequestId" } }, "content": { "application/json": { "schema": { "allOf": [{ "$ref": "#/components/schemas/Success" }, { "type": "object", "properties": { "data": { "type": "object", "required": ["name", "version"], "properties": { "name": { "type": "string", "example": "CineAstra API" }, "version": { "type": "string", "example": "1.0.0" } } } } }] } } } },
+          "403": { "$ref": "#/components/responses/Forbidden" }, "429": { "$ref": "#/components/responses/RateLimited" }, "500": { "$ref": "#/components/responses/InternalError" }, "503": { "$ref": "#/components/responses/Unavailable" }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "getLiveness", "tags": ["Infraestrutura"], "summary": "Liveness sem consultar MySQL", "description": "Público. Não implica dependências prontas ou cobertura de negócio.", "security": [],
+        "responses": { "200": { "description": "Processo responde", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Health" }, "example": { "success": true, "data": { "status": "ok" }, "requestId": "00000000-0000-4000-8000-000000000001" } } }, "headers": { "X-Request-Id": { "$ref": "#/components/headers/RequestId" } } }, "403": { "$ref": "#/components/responses/Forbidden" }, "429": { "$ref": "#/components/responses/RateLimited" }, "500": { "$ref": "#/components/responses/InternalError" }, "503": { "$ref": "#/components/responses/Unavailable" } }
+      }
+    },
+    "/ready": {
+      "get": {
+        "operationId": "getReadiness", "tags": ["Infraestrutura"], "summary": "Prontidão do banco e retenção de logs", "description": "Público, sem nomes de banco/host/credenciais. Verifica conexão, tabela logs, scheduler/evento de 90 dias ou worker configurado sem evento concorrente. Timeout SQL <=5s e deadline HTTP <=10s. Durante shutdown retorna 503. A configuração/permissões ausentes não são simuladas como prontas.", "security": [],
+        "responses": { "200": { "description": "Dependências operacionais prontas", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Health" }, "example": { "success": true, "data": { "status": "ready" }, "requestId": "00000000-0000-4000-8000-000000000001" } } }, "headers": { "X-Request-Id": { "$ref": "#/components/headers/RequestId" } } }, "403": { "$ref": "#/components/responses/Forbidden" }, "429": { "$ref": "#/components/responses/RateLimited" }, "500": { "$ref": "#/components/responses/InternalError" }, "503": { "$ref": "#/components/responses/Unavailable" } }
+      }
+    },
+    "/openapi.json": {
+      "get": {
+        "operationId": "getOpenApi", "tags": ["Documentação"], "summary": "Especificação única OpenAPI", "description": "Disponível em desenvolvimento/teste/homologação quando DOCS_ENABLED=true. Desativada em produção. Sem persistir autorização, Cache-Control no-store.", "security": [],
+        "responses": { "200": { "description": "Documento OpenAPI 3.0.3", "content": { "application/json": { "schema": { "type": "object", "required": ["openapi", "info", "paths"], "additionalProperties": true } } } }, "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" }, "429": { "$ref": "#/components/responses/RateLimited" }, "500": { "$ref": "#/components/responses/InternalError" }, "503": { "$ref": "#/components/responses/Unavailable" } }
+      }
+    },
+    "/api-docs": {
+      "get": {
+        "operationId": "getSwaggerUi", "tags": ["Documentação"], "summary": "Swagger UI com Authorize bearer", "description": "UI e assets locais em /api-docs/. CSP ajustada somente nesta montagem. Produção desativada. Não há endpoints de login nem operações de negócio fictícias nesta spec.", "security": [],
+        "responses": { "200": { "description": "UI HTML", "content": { "text/html": { "schema": { "type": "string" } } } }, "301": { "description": "Redireciona para /api-docs/", "headers": { "Location": { "schema": { "type": "string", "example": "/api-docs/" } } } }, "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" }, "429": { "$ref": "#/components/responses/RateLimited" }, "500": { "$ref": "#/components/responses/InternalError" }, "503": { "$ref": "#/components/responses/Unavailable" } }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": { "bearerAuth": { "type": "http", "scheme": "bearer", "bearerFormat": "JWT", "description": "HS256 de curta duração, issuer/audience, sub/sid/jti, usuário ativo/perfil atual e sessão não revogada; ADMIN/SUPERVISOR exigem 2FA. Login será entregue no Prompt 02." } },
+    "headers": {
+      "RequestId": { "description": "UUID gerado pelo servidor, nunca eco de header recebido", "schema": { "type": "string", "format": "uuid" } },
+      "RetryAfter": { "description": "Segundos para nova tentativa", "schema": { "type": "string", "pattern": "^[0-9]+$" } }
+    },
+    "schemas": {
+      "Id": { "type": "string", "pattern": "^[1-9][0-9]{0,19}$", "maxLength": 20, "description": "ID INT/BIGINT unsigned decimal string, limite máximo 18446744073709551615; nunca Number", "example": "9007199254740993" },
+      "Money": { "type": "string", "pattern": "^[0-9]{1,8}\\.[0-9]{2}$", "description": "BRL decimal exato com 2 casas, sem localização. Regras de cálculo serão no módulo preço.", "example": "120.00" },
+      "Pagination": { "type": "object", "required": ["limit", "nextCursor"], "properties": { "limit": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 }, "nextCursor": { "type": "string", "nullable": true, "maxLength": 256 } } },
+      "Success": { "type": "object", "required": ["success", "data", "requestId"], "properties": { "success": { "type": "boolean", "enum": [true] }, "data": { "type": "object" }, "requestId": { "type": "string", "format": "uuid" } } },
+      "Health": { "allOf": [{ "$ref": "#/components/schemas/Success" }, { "type": "object", "properties": { "data": { "type": "object", "required": ["status"], "additionalProperties": false, "properties": { "status": { "type": "string", "enum": ["ok", "ready"] } } } } }] },
+      "Error": { "type": "object", "additionalProperties": false, "required": ["success", "code", "message", "requestId"], "properties": { "success": { "type": "boolean", "enum": [false] }, "code": { "type": "string" }, "message": { "type": "string" }, "requestId": { "type": "string", "format": "uuid" }, "details": { "type": "array", "maxItems": 20, "items": { "type": "object", "additionalProperties": false, "required": ["field", "code"], "properties": { "field": { "type": "string" }, "code": { "type": "string" } } } } } }
+    },
+    "responses": {
+      "BadRequest": { "description": "400: entrada malformada/JSON inválido", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+      "Unauthorized": { "description": "401: JWT ausente/inválido/expirado ou sessão revogada", "headers": { "WWW-Authenticate": { "schema": { "type": "string", "example": "Bearer" } } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+      "Forbidden": { "description": "403: origem/perfil/dono/vínculo não permitido ou 2FA incompleto", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+      "NotFound": { "description": "404: recurso/rota ausente ou docs desativadas", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" }, "example": { "success": false, "code": "NOT_FOUND", "message": "Recurso não encontrado", "requestId": "00000000-0000-4000-8000-000000000001" } } } },
+      "Conflict": { "description": "409: conflito de domínio/idempotência", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+      "PayloadTooLarge": { "description": "413: limite do payload/arquivo", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+      "UnsupportedMedia": { "description": "415: mídia/encoding não suportado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+      "ValidationError": { "description": "422: validação/regra, somente detalhes seguros de campos", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+      "RateLimited": { "description": "429: limite geral/IP/identidade/fluxo, registrado em logs", "headers": { "Retry-After": { "$ref": "#/components/headers/RetryAfter" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+      "InternalError": { "description": "500: falha interna, sem SQL/stack/segredo inclusive em development", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+      "Unavailable": { "description": "503: dependência indisponível/deadline/shutdown, sem dados internos", "headers": { "Retry-After": { "$ref": "#/components/headers/RetryAfter" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" }, "example": { "success": false, "code": "DEPENDENCY_UNAVAILABLE", "message": "Dependência indisponível", "requestId": "00000000-0000-4000-8000-000000000001" } } } }
+    }
+  }
+}

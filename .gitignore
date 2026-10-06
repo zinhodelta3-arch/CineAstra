@@ -1,2 +1,9 @@
 node_modules/
 .next/
+.env
+.env.*
+!.env.example
+coverage/
+*.log
+backend/uploads/*
+!backend/uploads/.gitkeep

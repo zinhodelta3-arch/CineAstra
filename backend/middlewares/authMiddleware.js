@@ -1,73 +1,42 @@
-import jwt from 'jsonwebtoken';
-import { JWT_CONFIG } from '../config/jwt.js';
+import { ApiError } from '../utils/ApiError.js';
+import { ROLES } from '../services/accessService.js';
+import { idString } from '../utils/dto.js';
 
-// Middleware de autenticação JWT
-const authMiddleware = (req, res, next) => {
-    try {
-        // Verificar se o header Authorization existe
-        const authHeader = req.headers.authorization;
-        
-        if (!authHeader) {
-            return res.status(401).json({ 
-                erro: 'Token de acesso não fornecido',
-                mensagem: 'É necessário fornecer um token de autenticação'
-            });
-        }
-
-        // Extrair o token do header (formato: "Bearer TOKEN")
-        const token = authHeader.split(' ')[1];
-        
-        if (!token) {
-            return res.status(401).json({ 
-                erro: 'Token de acesso inválido',
-                mensagem: 'Formato do token incorreto'
-            });
-        }
-
-        // Verificar e decodificar o token
-        const decoded = jwt.verify(token, JWT_CONFIG.secret);
-        
-        // Adicionar informações do usuário ao request
-        req.usuario = {
-            id: decoded.id,
-            tipo: decoded.tipo,
-            email: decoded.email
-        };
-
+export function createAuthMiddleware(tokens, accessService) {
+    return async (req, res, next) => {
+        const header = req.headers.authorization;
+        if (typeof header !== 'string' || header.length > 4096 || !/^Bearer [A-Za-z0-9_.-]+$/.test(header)) throw ApiError.naoAutorizado();
+        let claims;
+        try { claims = tokens.verify(header.slice(7)); }
+        catch { throw ApiError.naoAutorizado(); }
+        try { req.usuario = await accessService.resolve(claims, { signal: req.signal }); }
+        catch (error) { throw error instanceof ApiError ? error : ApiError.indisponivel(); }
         next();
-    } catch (error) {
-        if (error.name === 'TokenExpiredError') {
-            return res.status(401).json({ 
-                erro: 'Token expirado',
-                mensagem: 'Faça login novamente'
-            });
-        }
-        
-        if (error.name === 'JsonWebTokenError') {
-            return res.status(401).json({ 
-                erro: 'Token inválido',
-                mensagem: 'Token de autenticação inválido'
-            });
-        }
-
-        console.error('Erro no middleware de autenticação:', error);
-        return res.status(500).json({ 
-            erro: 'Erro interno do servidor',
-            mensagem: 'Erro ao processar autenticação'
-        });
-    }
-};
-
-// Middleware para verificar se o usuário é administrador
-const adminMiddleware = (req, res, next) => {
-    if (req.usuario.tipo !== 'admin') {
-        return res.status(403).json({ 
-            erro: 'Acesso negado',
-            mensagem: 'Apenas administradores podem acessar este recurso'
-        });
-    }
-    next();
-};
-
-export { authMiddleware, adminMiddleware };
-
+    };
+}
+export function allowRoles(...roles) {
+    if (!roles.length || roles.some(r => !ROLES.includes(r))) throw new TypeError('Perfil inválido');
+    return (req, res, next) => {
+        if (!req.usuario) throw ApiError.naoAutorizado();
+        if (!roles.includes(req.usuario.tipo)) throw ApiError.acessoNegado();
+        next();
+    };
+}
+export const adminMiddleware = allowRoles('ADMIN');
+export function requireOwner(ownerResolver) {
+    return async (req, res, next) => {
+        if (!req.usuario) throw ApiError.naoAutorizado();
+        const owner = await ownerResolver(req);
+        if (owner == null || idString(owner) !== req.usuario.id) throw ApiError.acessoNegado();
+        next();
+    };
+}
+export function requireOperationalScope(check) {
+    return async (req, res, next) => {
+        if (!req.usuario) throw ApiError.naoAutorizado();
+        // Service consulta vínculo ativo e relações aninhadas; ausência de provider não autoriza.
+        if (!check) throw ApiError.indisponivel();
+        if (await check(req.usuario, req) !== true) throw ApiError.acessoNegado();
+        next();
+    };
+}
