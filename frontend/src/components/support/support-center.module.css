@@ -21,7 +21,7 @@
 
 .hero,
 .ticketBoard,
-.contactCard {
+.aiSupport {
   position: relative;
   z-index: 1;
   width: min(1120px, 100%);
@@ -393,68 +393,217 @@
   cursor: pointer;
 }
 
-.contactCard {
+.aiSupport {
+  display: grid;
+  grid-template-columns: minmax(0, .82fr) minmax(0, 1.18fr);
+  gap: 0;
+  margin-top: 28px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: 0 25px 75px color-mix(in srgb, var(--foreground) 10%, transparent);
+}
+
+.aiHeader {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 22px;
+  padding: 34px;
+  border-right: 1px dashed var(--border);
+  background: color-mix(in srgb, var(--primary) 4%, var(--card));
+}
+
+.aiHeader h2 {
+  max-width: 410px;
+  margin: 0;
+  color: var(--foreground);
+  font-size: clamp(24px, 3vw, 34px);
+  line-height: 1.02;
+  letter-spacing: -.045em;
+}
+
+.aiHeader p {
+  max-width: 440px;
+  margin: 12px 0 0;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.aiStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  padding: 8px 11px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--background);
+  color: var(--muted-foreground);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .03em;
+}
+
+.statusDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--primary);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 12%, transparent);
+}
+
+.aiChat {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 30px;
+  background: var(--background);
+}
+
+.aiIntro {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-bottom: 23px;
+  border-bottom: 1px solid var(--border);
+}
+
+.aiAvatar {
+  display: grid;
+  place-items: center;
+  width: 55px;
+  height: 55px;
+  flex: 0 0 auto;
+  border: 1px solid color-mix(in srgb, var(--primary) 35%, var(--border));
+  border-radius: 15px 6px 15px 6px;
+  background: color-mix(in srgb, var(--primary) 10%, var(--card));
+  color: var(--primary);
+}
+
+.aiIntro strong {
+  display: block;
+  max-width: 390px;
+  color: var(--foreground);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.aiIntro p {
+  margin: 5px 0 0;
+  color: var(--muted-foreground);
+  font-size: 11px;
+}
+
+.suggestedQuestions {
+  padding: 22px 0 24px;
+}
+
+.suggestedQuestions > span {
+  display: block;
+  margin-bottom: 12px;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .04em;
+}
+
+.suggestionList {
+  display: grid;
+  gap: 8px;
+}
+
+.suggestionList button {
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 30px;
-  margin-top: 28px;
-  padding: 27px 32px;
+  gap: 12px;
+  min-height: 42px;
+  padding: 9px 13px;
   border: 1px solid var(--border);
-  border-radius: 14px;
-  background: var(--secondary);
-  color: var(--secondary-foreground);
+  border-radius: 9px;
+  background: var(--card);
+  color: var(--foreground);
+  font: inherit;
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 150ms ease, color 150ms ease, transform 150ms ease;
 }
 
-.contactCard .boardKicker { color: var(--accent); }
-
-.contactCard h2 {
-  color: var(--secondary-foreground);
+.suggestionList button::after {
+  content: "›";
+  color: var(--muted-foreground);
+  font-size: 20px;
+  line-height: 1;
 }
 
-.contactCard p {
-  max-width: 600px;
-  margin: 9px 0 0;
-  color: color-mix(in srgb, var(--secondary-foreground) 72%, transparent);
-  font-size: 12px;
-  line-height: 1.6;
+.suggestionList button:hover {
+  border-color: color-mix(in srgb, var(--primary) 55%, var(--border));
+  color: var(--primary);
+  transform: translateX(2px);
 }
 
-.contactTicket {
-  display: grid;
-  justify-items: center;
+.aiComposer {
+  display: flex;
+  align-items: center;
   gap: 8px;
-  min-width: 150px;
-  padding-left: 30px;
-  border-left: 1px dashed color-mix(in srgb, var(--secondary-foreground) 40%, transparent);
+  margin-top: auto;
+  padding: 7px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--card);
+  box-shadow: 0 10px 30px color-mix(in srgb, var(--foreground) 7%, transparent);
 }
 
-.contactTicket > span:first-child {
-  font-size: 8px;
-  font-weight: 900;
-  letter-spacing: .2em;
+.aiComposer:focus-within {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--ring) 10%, transparent);
 }
 
-.contactTicket strong {
-  font-size: 17px;
-  letter-spacing: .08em;
+.aiComposer input {
+  min-width: 0;
+  flex: 1;
+  height: 40px;
+  padding: 0 12px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--foreground);
+  font: inherit;
+  font-size: 12px;
 }
 
-.contactTicket svg {
-  color: var(--accent);
+.aiComposer input::placeholder {
+  color: color-mix(in srgb, var(--muted-foreground) 70%, transparent);
 }
 
-.contactLine {
-  width: 45px;
-  height: 2px;
-  background: var(--accent);
+.aiComposer button {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 50%;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  cursor: pointer;
+  transition: transform 150ms ease;
+}
+
+.aiComposer button:hover {
+  transform: scale(1.04);
 }
 
 @media (max-width: 850px) {
   .faqGrid { grid-template-columns: 1fr; }
   .category:nth-child(odd) { border-right: 0; }
   .category:nth-child(n + 2) { border-top: 1px dashed var(--border); }
-  .contactCard { align-items: flex-start; }
+  .aiSupport { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 600px) {
@@ -467,12 +616,18 @@
   .categoryScroller { padding: 14px 20px; }
   .category { padding: 25px 20px 28px; }
   .ticketStamp { display: none; }
-  .contactCard { display: grid; padding: 25px 22px; }
-  .contactTicket {
-    width: 100%;
-    min-width: 0;
-    padding: 17px 0 0;
-    border-top: 1px dashed color-mix(in srgb, var(--secondary-foreground) 40%, transparent);
-    border-left: 0;
+  .aiHeader {
+    padding: 26px 22px;
+    border-right: 0;
+    border-bottom: 1px dashed var(--border);
+  }
+  .aiChat {
+    padding: 22px;
+  }
+  .aiIntro {
+    align-items: flex-start;
+  }
+  .suggestedQuestions {
+    padding-bottom: 20px;
   }
 }
