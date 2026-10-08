@@ -40,31 +40,31 @@ const U = (id, w = 1800) => `https://images.unsplash.com/${id}?auto=format&fit=c
 const BANNERS = [
   {
     id: "banner-1",
-    eyebrow: "AstraSnack • Combos",
-    title: "O combo perfeito para a sua sessão.",
-    description: "Pipoca, bebida e aquele toque especial que transforma o filme em experiência.",
-    image: "https://cinemarkla.modyocdn.com/uploads/0244f051-b797-4cf3-ae79-8b3b7724eaf1/original/COMBO-SCREAM-2-APP.jpg",
+    eyebrow: "AstraSnack • Pipocas",
+    title: "Pipoca em primeiro plano.",
+    description: "Quentinha, crocante e em quantidade de sobra para acompanhar a sessão inteira.",
+    image: "https://static.wixstatic.com/media/af4e4c_e2bd4ced91e54b40a1c03c37da08d832~mv2.jpg/v1/fill/w_1600,h_900,al_c,q_90/af4e4c_e2bd4ced91e54b40a1c03c37da08d832~mv2.jpg",
   },
   {
     id: "banner-2",
-    eyebrow: "AstraSnack • Pipocas",
-    title: "Pipoca quentinha. Filme começando.",
-    description: "O clássico do cinema que combina com qualquer gênero, qualquer sessão e qualquer companhia.",
-    image: U("photo-1766267190781-73203979c4ac"),
+    eyebrow: "AstraSnack • Bebidas",
+    title: "Refri gelado para completar o filme.",
+    description: "Uma bebida bem gelada, pipoca por perto e a sessão pronta para começar.",
+    image: "https://www.tochinavi.net/img/kuchikomi/02/IMG01_a5f61d64d0824a3c41b70371c89b7b9ad9338a16.jpg",
   },
   {
     id: "banner-3",
-    eyebrow: "AstraSnack • Snacks",
-    title: "Mais do que pipoca.",
-    description: "Doces, bebidas e outras delícias para acompanhar cada cena até os créditos finais.",
-    image: U("photo-1758216535135-2411b8b6c310"),
+    eyebrow: "AstraSnack • Doces",
+    title: "Um pouco de cor entre uma cena e outra.",
+    description: "Balas e guloseimas para deixar cada sessão ainda mais divertida.",
+    image: U("photo-1770021999036-53291a3a6596"),
   },
   {
     id: "banner-4",
-    eyebrow: "AstraSnack • Doces",
-    title: "Um pouco de cor entre uma cena e outra.",
-    description: "Escolha seus doces favoritos e deixe a sessão ainda mais divertida.",
-    image: U("photo-1770021999036-53291a3a6596"),
+    eyebrow: "AstraSnack • Combo CineAstra",
+    title: "Pipoca, bebida e chocolate. Do jeitinho CineAstra.",
+    description: "Um combo completo para levar para a poltrona: pipoca, bebida e doces para compartilhar.",
+    image: "/astrasnack/cineastra-combo.webp",
   },
 ]
 
@@ -156,12 +156,15 @@ function CinemaStyles() {
 
       .astra-cart-ticket {
         position: relative;
+        display: flex;
         overflow: hidden;
         isolation: isolate;
-        background: var(--card);
-        border: 1px solid color-mix(in oklab, var(--primary) 32%, var(--border));
-        border-radius: 8px;
-        box-shadow: 0 10px 24px rgba(53, 51, 35, .12);
+        min-height: 88px;
+        background: var(--primary);
+        color: var(--primary-foreground);
+        border: 0;
+        border-radius: 7px;
+        box-shadow: 0 12px 28px rgba(53, 51, 35, .18);
       }
 
       .astra-cart-ticket::before,
@@ -169,24 +172,56 @@ function CinemaStyles() {
         content: "";
         position: absolute;
         top: 50%;
-        width: 18px;
-        height: 18px;
+        width: 22px;
+        height: 22px;
         border-radius: 999px;
         background: var(--background);
         transform: translateY(-50%);
-        z-index: 2;
+        z-index: 3;
       }
 
-      .astra-cart-ticket::before { left: -10px; }
-      .astra-cart-ticket::after { right: -10px; }
-
-      .astra-cart-ticket-edge {
-        border-bottom: 1px dashed color-mix(in oklab, var(--primary) 45%, var(--border));
-      }
+      .astra-cart-ticket::before { left: -12px; }
+      .astra-cart-ticket::after { right: -12px; }
 
       .astra-cart-ticket-main {
+        position: relative;
+        flex: 1;
+        padding: 13px 15px 11px 20px;
         background:
-          linear-gradient(135deg, color-mix(in oklab, var(--card) 92%, var(--accent)), var(--card));
+          radial-gradient(circle at 88% 20%, rgba(250,210,65,.18), transparent 28%),
+          linear-gradient(135deg, #971D00, #7C1029 58%, #691528);
+      }
+
+      .astra-cart-ticket-main::after {
+        content: "";
+        position: absolute;
+        right: -1px;
+        top: 10px;
+        bottom: 10px;
+        border-right: 2px dashed rgba(236,225,220,.72);
+      }
+
+      .astra-cart-ticket-stub {
+        width: 54px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-left: 1px dashed rgba(236,225,220,.55);
+        background: rgba(53,51,35,.16);
+      }
+
+      .astra-cart-ticket-stub span {
+        writing-mode: vertical-rl;
+        transform: rotate(180deg);
+        font-size: 8px;
+        font-weight: 900;
+        letter-spacing: .2em;
+        text-transform: uppercase;
+        opacity: .9;
+      }
+
+      .astra-cart-ticket-edge {
+        display: none;
       }
 
       .astra-card {
@@ -490,25 +525,24 @@ export default function AstraSnackPage() {
               </p>
             </div>
 
-            <div className="astra-cart-ticket hidden w-44 shrink-0 sm:block">
-              <div className="astra-cart-ticket-main px-4 pt-3 pb-2 text-right">
+            <div className="astra-cart-ticket hidden w-52 shrink-0 sm:flex">
+              <div className="astra-cart-ticket-main">
                 <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-1.5 text-[9px] font-black tracking-[.2em] text-primary uppercase">
+                  <div className="flex items-center gap-1.5 text-[9px] font-black tracking-[.2em] uppercase">
                     <Ticket className="size-3" />
-                    AstraSnack
+                    CineAstra
                   </div>
-                  <ShoppingBag className="size-4 text-primary" />
+                  <ShoppingBag className="size-4" />
                 </div>
-                <div className="mt-2 text-[10px] font-bold tracking-[.18em] text-muted-foreground uppercase">
+                <div className="mt-2 text-[10px] font-bold tracking-[.18em] uppercase opacity-80">
                   Meu carrinho
                 </div>
-                <div className="mt-0.5 text-2xl font-black text-foreground">
-                  {String(cartCount).padStart(2, "0")} <span className="text-sm font-bold text-muted-foreground">itens</span>
+                <div className="mt-0.5 text-2xl font-black">
+                  {String(cartCount).padStart(2, "0")} <span className="text-xs font-bold opacity-75">itens</span>
                 </div>
               </div>
-              <div className="astra-cart-ticket-edge flex items-center justify-between gap-3 px-4 py-2 text-[8px] font-bold tracking-[.18em] text-muted-foreground uppercase">
-                <span>sessão</span>
-                <span>● ● ●</span>
+              <div className="astra-cart-ticket-stub">
+                <span>AstraSnack • Ticket</span>
               </div>
             </div>
           </div>
