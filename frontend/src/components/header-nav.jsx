@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useState } from "react"
-import { ArrowUpRight, Film, House, MapPin, Menu, Popcorn, Sparkles, UserRound, UserPlus } from "lucide-react"
+import { ArrowUpRight, CircleHelp, Film, House, MapPin, Menu, Popcorn, Sparkles, UserRound, UserPlus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Sheet,
@@ -20,6 +20,7 @@ const navigation = [
   { label: "Cinemas", icon: MapPin },
   { label: "AstraSnack", href: "/astrasnack", icon: Popcorn },
   { label: "Experiências", icon: Sparkles },
+  { label: "Suporte", href: "/suporte", icon: CircleHelp },
 ]
 
 /* Linha de destacar com entalhes semicirculares nas duas pontas */
