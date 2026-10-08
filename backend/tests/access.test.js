@@ -68,9 +68,10 @@ test('sem provider de sessão do Prompt02: JWT válido falha 503, não ignora re
     await request(app).get('/__test/private').set('Authorization', `Bearer ${token(f)}`).expect(503);
 });
 test('limiter login por identidade independente do IP, sem persistir email em chave', async () => {
-    const f = secureFixture();
-    for (let i = 0; i < 10; i++) await request(f.app).post('/__test/login-limit').send({ email: 'test@invalid.example' }).expect(200);
-    await request(f.app).post('/__test/login-limit').send({ email: 'test@invalid.example' }).expect(429);
+    // Proxy local explicitamente confiável SOMENTE nesta fixture para simular IPs distintos.
+    const f = secureFixture({ config: { trustProxy: ['127.0.0.1', '::1'] } });
+    for (let i = 0; i < 10; i++) await request(f.app).post('/__test/login-limit').set('X-Forwarded-For', `203.0.113.${i + 1}`).send({ email: 'test@invalid.example' }).expect(200);
+    await request(f.app).post('/__test/login-limit').set('X-Forwarded-For', '203.0.113.100').send({ email: 'test@invalid.example' }).expect(429);
 });
 test('CAPTCHA fail-closed: ausência 422, token + provider não configurado 503, false 422', async () => {
     for (const [provider, body, status] of [[unavailableCaptchaProvider(), {}, 422], [unavailableCaptchaProvider(), { captchaToken: 'opaque' }, 503], [{ async verify() { return false; } }, { captchaToken: 'opaque' }, 422]]) {

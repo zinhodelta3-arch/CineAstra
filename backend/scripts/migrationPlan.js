@@ -32,7 +32,8 @@ export async function migrationPlan() {
         ['20261001_03_create_table_logs.sql', sql => /^(CREATE TABLE|CREATE INDEX)\b/i.test(sql)],
         ['20261001_04_update_alter_table_fornecedores.sql', () => true],
         ['20261006_alter_table_filmes.sql', sql => /^(ALTER TABLE|CREATE TABLE|INSERT INTO (filmes_imagens|newsletter_categorias))\b/i.test(sql)],
-        ['20261006_01_infrastructure_events.sql', () => true]
+        ['20261006_01_infrastructure_events.sql', () => true],
+        ['20261008_01_identity.sql', () => true]
     ];
     const plan = [];
     for (const [file, filter] of sources) {

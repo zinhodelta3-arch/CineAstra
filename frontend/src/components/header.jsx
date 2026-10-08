@@ -1,6 +1,43 @@
+"use client"
+
 import Link from "next/link"
+import { useEffect, useState } from "react"
 import { AppearanceSelector } from "@/components/appearance-selector"
 import { DesktopNavigation, MobileNavigation } from "@/components/header-nav"
+
+// Mapeamento ordenado dos temas para as logos correspondentes na pasta public
+const LOGO_CONFIG = [
+  {
+    keywords: ["catp", "catppuccin", "latte", "frappe", "macchiato"],
+    src: "/Catp.png",
+  },
+  {
+    keywords: ["mocha"],
+    src: "/Mocha.png",
+  },
+  {
+    keywords: ["violet"],
+    src: "/Violet.png",
+  },
+]
+
+const DEFAULT_LOGO = "/CineAstralogou.png"
+
+/**
+ * Resolve o caminho da logo baseado no valor do atributo data-theme do <html>
+ */
+function getLogoByTheme(theme) {
+  if (!theme) return DEFAULT_LOGO
+  const normalizedTheme = theme.toLowerCase()
+
+  for (const config of LOGO_CONFIG) {
+    if (config.keywords.some((keyword) => normalizedTheme.includes(keyword))) {
+      return config.src
+    }
+  }
+
+  return DEFAULT_LOGO
+}
 
 /* Picote: linha pontilhada que imita a borda serrilhada do ingresso */
 function Perforation({ className = "" }) {
@@ -44,36 +81,65 @@ function Barcode() {
 }
 
 export function Header() {
+  const [logoSrc, setLogoSrc] = useState(DEFAULT_LOGO)
+
+  useEffect(() => {
+    const updateLogo = () => {
+      const activeTheme = document.documentElement.getAttribute("data-theme")
+      setLogoSrc(getLogoByTheme(activeTheme))
+    }
+
+    updateLogo()
+
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        if (mutation.type === "attributes" && mutation.attributeName === "data-theme") {
+          updateLogo()
+          break
+        }
+      }
+    })
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    })
+
+    return () => observer.disconnect()
+  }, [])
+
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-md transition-all">
-      <div className="container mx-auto max-w-[88rem] px-3 py-2 sm:px-">
+    <header className="sticky top-0 z-50 h-[81px] w-full border-b border-border/40 bg-background/80 backdrop-blur-md transition-all">
+      <div className="container mx-auto flex h-full max-w-[88rem] items-center px-3 py-2 sm:px-4">
         {/* Ingresso */}
-        <div className="relative flex h-[65px] items-stretch rounded-lg border border-border/70 bg-card/60 shadow-sm">
+        <div className="relative flex h-[65px] w-full items-stretch rounded-lg border border-border/70 bg-card/60 shadow-sm">
           <Notch side="left" />
           <Notch side="right" />
           <Perforation className="top-[3px]" />
           <Perforation className="bottom-[3px]" />
 
-         <Link
-         href="/"
-         className="group flex flex-col items-start justify-center gap-1 border-r-2 border-dashed border-border/70 pl-3 pr-3 transition-opacity hover:opacity-90 sm:pl-4 sm:pr-4"
-         aria-label="CineAstra — Página inicial"
-         >
-         <img
-         src="/CineAstra.png"
-          alt=""
-           aria-hidden="true"
-            className="h-10 w-auto max-w-[180px] object-contain transition-transform duration-300 group-hover:scale-105 sm:h-11 sm:max-w-[200px]"
-           />
+          {/* Seção da Logo: Espaçamento fluido com a linha tracejada perfeitamente alinhada */}
+          <Link
+            href="/"
+            className="group flex shrink-0 items-center border-r-2 border-dashed border-border/70 px-5 transition-opacity hover:opacity-90 sm:px-7"
+            aria-label="CineAstra — Página inicial"
+          >
+            <div className="flex h-9 w-auto items-center justify-center sm:h-10">
+              <img
+                src={logoSrc}
+                alt="CineAstra Logo"
+                className="h-full w-auto max-w-[150px] object-contain object-center transition-transform duration-300 group-hover:scale-105 sm:max-w-[180px]"
+              />
+            </div>
           </Link>
 
           {/* Corpo do ingresso: navegação */}
-          <div className="flex flex-1 items-center justify-center px-3 sm:px-4">
+          <div className="flex flex-1 min-w-0 items-center justify-center px-4 sm:px-6">
             <DesktopNavigation />
           </div>
 
           {/* Canhoto destacável: ações */}
-          <div className="flex items-center gap-3 border-l-2 border-dashed border-border/70 pl-3 pr-5 sm:pl-4 sm:pr-6">
+          <div className="flex shrink-0 items-center gap-3 border-l-2 border-dashed border-border/70 pl-4 pr-5 sm:pl-6 sm:pr-6">
             <Barcode />
             <div className="flex items-center gap-2">
               <AppearanceSelector />

@@ -42,7 +42,7 @@ export function createApp({ config, database, logQueue, retention, sessionProvid
     app.use(express.json({ limit: config.bodyLimit, strict: true, inflate: false }));
     app.use(express.urlencoded({ limit: config.bodyLimit, extended: false, parameterLimit: 50, inflate: false }));
     app.use(infrastructureRoutes(createHealthController(createHealthService(database, retention, lifecycle))));
-    if (config.docsEnabled) {
+    if (config.docsEnabled && !config.production) {
         const spec = { ...specification, servers: [{ url: config.publicOrigin }] };
         app.get('/openapi.json', (req, res) => { res.set('Cache-Control', 'no-store'); res.json(spec); });
         // Ajuste CSP apenas nesta UI; nenhuma lib externa, não relaxar API global.

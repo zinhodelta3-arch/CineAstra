@@ -54,6 +54,8 @@ export function validateEnv(env = process.env) {
     const sampleRate = Number(env.LOG_SUCCESS_SAMPLE_RATE ?? 0.05);
     if (!Number.isFinite(sampleRate) || sampleRate < 0 || sampleRate > 1) errors.add('LOG_SUCCESS_SAMPLE_RATE');
     if ((env.CAPTCHA_PROVIDER ?? 'unavailable') !== 'unavailable') errors.add('CAPTCHA_PROVIDER');
+    const encryptionKey = env.TWO_FACTOR_ENCRYPTION_KEY || null;
+    if (encryptionKey && (!/^[A-Za-z0-9+/]{43}=$/.test(encryptionKey) || Buffer.from(encryptionKey, 'base64').length !== 32)) errors.add('TWO_FACTOR_ENCRYPTION_KEY');
     const config = {
         mode, production, docsEnabled, origins, trustProxy, publicOrigin, instances, rateLimitStore,
         host: env.HOST ?? '127.0.0.1', port: integer('PORT', 3001, 1, 65535),
@@ -61,6 +63,7 @@ export function validateEnv(env = process.env) {
         httpTimeout: integer('HTTP_TIMEOUT_MS', 10000, 100, 10000),
         shutdownTimeout: integer('SHUTDOWN_TIMEOUT_MS', 10000, 100, 30000),
         jwt: { secret, issuer: required('JWT_ISSUER'), audience: required('JWT_AUDIENCE'), ttl: integer('JWT_TTL_SECONDS', 900, 60, 900) },
+        identity: { encryptionKey, bcryptCost: integer('BCRYPT_COST', 12, 10, 14), termsVersion: env.TERMS_VERSION || null, privacyVersion: env.PRIVACY_VERSION || null },
         db: { host: required('DB_HOST'), port: integer('DB_PORT', 3306, 1, 65535), user: required('DB_USER'), password: required('DB_PASSWORD'), database: required('DB_NAME'),
             connectionLimit: integer('DB_CONNECTION_LIMIT', 10, 1, 100), queueLimit: integer('DB_QUEUE_LIMIT', 100, 1, 1000), timeout: integer('DB_TIMEOUT_MS', 3000, 100, 5000) },
         rate: { max: integer('RATE_LIMIT_MAX', 120, 1, 10000), windowMs: integer('RATE_LIMIT_WINDOW_MS', 60000, 100, 3600000) },

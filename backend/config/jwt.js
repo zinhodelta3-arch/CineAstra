@@ -4,8 +4,8 @@ import { idString } from '../utils/dto.js';
 
 export function createJwt(config) {
     return {
-        signAccess({ userId, sessionId }) {
-            return jwt.sign({ sid: idString(sessionId), jti: randomUUID(), purpose: 'access' }, config.secret,
+        signAccess({ userId, sessionId, jti = randomUUID() }) {
+            return jwt.sign({ sid: idString(sessionId), jti, purpose: 'access' }, config.secret,
                 { algorithm: 'HS256', issuer: config.issuer, audience: config.audience, subject: idString(userId), expiresIn: config.ttl });
         },
         verify(token) {

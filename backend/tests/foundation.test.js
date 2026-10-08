@@ -63,7 +63,7 @@ test('falha de SET/begin/commit e rollback ainda libera conexão', async () => {
     }
     const f = fakeDatabase({ fail: 'ROLLBACK' });
     await assert.rejects(f.database.transaction(async () => { throw new Error('operation'); }));
-    assert.equal(f.calls.at(-1).sql, 'release');
+    assert.equal(f.calls.at(-1).sql, 'destroy');
 });
 test('aquisição com timeout libera conexão tardia; sinal abortado destrói unidade SQL', async () => {
     const f = fakeDatabase({ acquireDelay: 80 });
@@ -74,6 +74,12 @@ test('aquisição com timeout libera conexão tardia; sinal abortado destrói un
     const controller = new AbortController();
     await assert.rejects(aborted.database.withConnection(async () => { controller.abort(); }, { signal: controller.signal }), e => e.statusCode === 503);
     assert.equal(aborted.calls.at(-1).sql, 'destroy');
+});
+test('deadline SQL destrói socket e encerra callback pendente; não devolve conexão quebrada ao pool', async () => {
+    const f = fakeDatabase();
+    await assert.rejects(f.database.withConnection(() => new Promise(() => {})), e => e.statusCode === 503);
+    assert.equal(f.calls.at(-1).sql, 'destroy');
+    assert.ok(!f.calls.some(c => c.sql === 'release'));
 });
 test('fila de logs limitada, métricas/drop/failure/drain e fechamento', async () => {
     let finish;
@@ -135,4 +141,18 @@ test('migration recusa base existente sem ledger ANTES de DDL', async () => {
     } }); } };
     await assert.rejects(applyPlan(database, []), /baseline/);
     assert.ok(!calls.some(sql => sql.startsWith('CREATE')));
+});
+test('migration interrompida RUNNING/checksum divergente não repete DDL implicitamente commitado', async () => {
+    for (const record of [{ name: 'test:1', checksum: 'abc', status: 'RUNNING' }, { name: 'test:1', checksum: 'changed', status: 'APPLIED' }]) {
+        const calls = [];
+        const database = { async withConnection(fn) { return fn({ async execute(sql) {
+            calls.push(sql);
+            if (sql.includes('GET_LOCK')) return [[{ acquired: 1 }]];
+            if (sql.includes('information_schema.TABLES')) return [[{ name: 'schema_migrations' }]];
+            if (sql.startsWith('SELECT name')) return [[record]];
+            return [[]];
+        } }); } };
+        await assert.rejects(applyPlan(database, [{ name: 'test:1', checksum: 'abc', sql: 'CREATE TABLE fixture (id INT)' }]), /interrompido/);
+        assert.ok(!calls.includes('CREATE TABLE fixture (id INT)'));
+    }
 });

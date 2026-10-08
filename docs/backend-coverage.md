@@ -1,6 +1,6 @@
 # CineAstra — matriz de cobertura e contratos (Prompt 00)
 
-06/10/2026. Diagnóstico, **não implementação**. Todos os endpoints abaixo são **planejados**, salvo indicação expressa. Nenhum fluxo HTTP de negócio foi demonstrado funcional. Migrations existentes são evidência de estrutura documental, não de requisito atendido. Fontes/achados: [arquitetura](backend-architecture-plan.md); PK/FK/ENUM/CHECK/índices: [inventário](backend-schema-inventory.md); execução e bloqueios: [handoff](backend-handoff.md).
+Snapshot diagnóstico:06/10/2026. Atualização Prompt01:08/10/2026. **Infraestrutura implementada; fluxos HTTP de negócio ainda ausentes.** As matrizes RF/RN/RNF originais abaixo preservam o planejamento00, não certificam domínio entregue. Estado atualizado da fundação está na seção Prompt01 ao fim deste documento. Fontes/achados: [arquitetura](backend-architecture-plan.md); PK/FK/ENUM/CHECK/índices: [inventário](backend-schema-inventory.md); execução e bloqueios: [handoff](backend-handoff.md).
 
 ## DECISÕES COMPARTILHADAS
 
@@ -145,3 +145,24 @@ Legenda: **A** ausente na API; **P** componente parcial existente; **I** incompa
 ## Evidências executadas versus aceite futuro
 
 Executados: sintaxe dos 8 arquivos JS backend aprovada; 6 assertions isoladas de ApiError aprovadas; `npm test` backend falhou por placeholder; bootstrap `node backend/app.js` falhou com ERR_MODULE_NOT_FOUND express; resolução de libs ausentes; audit do lock backend sem vulnerabilidades reportadas; contagem de 47 tabelas DDL únicas excluindo exemplos comentados. Não houve testes HTTP, MySQL, concorrência, Swagger, build/lint/execução do frontend nem SLA/acessibilidade medidos. Testes das matrizes acima permanecem pendentes nos módulos respectivos. Nenhum RF/RN crítico marcado implementado apenas por existir tabela.
+
+## Prompt 01 — cobertura atual (sobrepõe apenas fundação ao snapshot acima)
+
+| Requisito/contrato | Entrega integrada / evidência executável | Limite/pendência |
+| --- | --- | --- |
+| RN02/RNF17 (parcial) | JWT strict, RBAC5perfisuppercase, owner/interface scope; access.test.js casos inválido/expirado/algoritmo/issuer/audience/IDOR/perfil/status/2FA | Provider de sessão real, revogação/enrollment/login e vínculos operacionais dos módulos ainda ausentes; default503 |
+| RNF02/09/34 | env validado, requestId/404/erros seguros, deadlines HTTP/SQL, Promise cancellation/sockets destruídos; http.test/foundation.test/server.test | Tempo real sob carga/provedores/SLA não medido; sem frontend feedback implementado |
+| RNF18 | Limiter geral e8fluxos IP+identidade/hash,429Retry-After/log; access/http.test | Store compartilhado não escolhido; >1instância/memory inválido e external sem factory bloqueia |
+| RNF19 | dotenv startup antes de dependências, validação sem segredos, ignore/.env.example, teste startup inválido | Configdev/test e secret reais não fornecidos |
+| RNF20 (parcial) | CAPTCHA interface fail-closed422/503, trust proxy restrito, testes; CORS não confundido com autorização | ProviderCAPTCHA, WAF/Cloudflare/TLS e topologia são dependências reais externas |
+| RNF07/32/33/35 (fundação) | DTOID/Money/Pagination, pool/transação parametrizados, arquitetura routes-controller-service-model, scripts/tests/OpenAPI/runner | Regras e SQLdomínios M02+ não implementados; locks/concorrência só podem ser provados em MySQL real |
+| RNF08/36 (parcial) | Liveness/readiness/shutdown, fecha HTTP/worker/fila/pool, readiness503seguro e teste realHTTP com dependências simuladas | Nenhum SLA/backup/monitoramento/produção certificado; MySQL real não testado |
+| RF46 (somente preparação) | Logger SQL limitado/queue/redaction90dias+alternativa worker/metadados; schema/helper auditoria/outbox | Endpointadmin/relatórios/consumeroutbox ainda ausentes, novas tabelas não migradas e scheduler não comprovado |
+| RF04/RNF16 | Preparação JWT/provider2FA e proteção AD/S testada com fixture | Não afirmar ativação/enrollment2FA implementada (Prompt02) |
+| RNF05 | Multer limitado não global; MIME prefilter+gate de validadorreal; sem staticupload genérico | Upload domínio/conteúdo/storage/compensação ficam03; sem rota multipart nova nesta etapa |
+
+**Rotas publicadas da fundação:** GET `/` (identificação), `/health` (liveness), `/ready` (banco/log/retenção200ou503), `/openapi.json`, `/api-docs`/assets (dev/test/stagingdocsEnabled). Todas públicas com `security:[]`, rate limiter geral/Helmet/CORS. Docs404emproduction. OpenAPI bearerAuth global disponível para futuros privados, sem login fictício. Todos os `/api/...` das matrizes anteriores continuam planejados.
+
+**Banco:** runner offline manifest+ledger proposto e nova migration M01auditoria/outbox criados. Nenhum SQL executado; base existente sem ledger recusada, explicit baseline manual obrigatório. Logs/nome_cine/V4aplicados continuam desconhecidos. Migrations/tablePKFKENUMs foram inspecionadas como fontes, não database vivo.
+
+**Testes:** fixtures SQL/session/retention de unit/HTTP explicitamente simuladas, mocks não provam sessão real/locks/scheduler. OpenAPI validada e UI/assets respondem com configurações seguras. TesteMySQLreal isolado existe e registra skip por TEST_DB_*não fornecidos; resultados finais/contagem/comandos estão no handoff01. Nenhum RFde negócio foi promovido a funcional com base nos testes da infraestrutura.

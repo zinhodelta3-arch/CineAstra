@@ -27,3 +27,14 @@ test('server HTTP inicializa, configura timeouts e fecha HTTP/worker/fila/pool u
     assert.equal(runtime.server.listening, false);
     assert.deepEqual(order, ['start', 'worker', 'queue', 'database']);
 });
+test('falha no encerramento de worker não impede tentativa de fechar fila e pool', async () => {
+    const closed = [];
+    const runtime = await startServer({ ...validateEnv(testEnvironment()), port: 0 }, {
+        database: { async close() { closed.push('database'); } },
+        logQueue: { enqueue() {}, async close() { closed.push('queue'); } },
+        retention: { start() {}, async close() { throw new Error('fixture_shutdown_failure'); } }
+    });
+    await assert.rejects(runtime.close(), /Encerramento incompleto/);
+    assert.deepEqual(closed, ['queue', 'database']);
+    assert.equal(runtime.server.listening, false);
+});

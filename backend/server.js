@@ -33,10 +33,12 @@ export async function startServer(config, overrides = {}) {
             const force = setTimeout(() => server.closeAllConnections(), config.shutdownTimeout);
             try {
                 await new Promise(resolve => { server.close(resolve); server.closeIdleConnections(); });
-                await retention.close();
-                await queue.close();
-                await app.locals.close();
-                await database.close();
+                let failed = false;
+                for (const close of [() => retention.close(), () => queue.close(), () => app.locals.close(), () => database.close()]) {
+                    try { await close(); }
+                    catch { failed = true; report('shutdown_resource_failed'); }
+                }
+                if (failed) throw new Error('Encerramento incompleto');
             } finally { clearTimeout(force); }
         })();
         return shutdown;

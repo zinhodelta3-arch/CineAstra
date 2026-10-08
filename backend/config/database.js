@@ -48,7 +48,7 @@ export function createDatabase(config, suppliedPool) {
             return await Promise.race([deadline, (async () => {
                 await execute("SET SESSION time_zone = '+00:00'");
                 if (signal?.aborted) throw ApiError.indisponivel();
-                const result = await operation({ execute });
+                const result = await operation({ execute, invalidate: destroy });
                 if (destroyed) throw ApiError.indisponivel();
                 return result;
             })()]);
@@ -68,7 +68,7 @@ export function createDatabase(config, suppliedPool) {
                 return result;
             } catch (error) {
                 try { await connection.execute('ROLLBACK'); }
-                catch { report('transaction_rollback_failed'); }
+                catch { connection.invalidate(); report('transaction_rollback_failed'); }
                 throw error;
             }
         }, options);
