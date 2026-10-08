@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
+  Bot,
   CalendarDays,
   ChevronDown,
   CircleHelp,
@@ -14,6 +15,7 @@ import {
   MapPin,
   Popcorn,
   Search,
+  SendHorizontal,
   ShieldCheck,
   Ticket,
   UsersRound,
@@ -358,17 +360,54 @@ export default function SupportCenter() {
         )}
       </section>
 
-      <section className={styles.contactCard}>
-        <div>
-          <span className={styles.boardKicker}>Ainda precisa de ajuda?</span>
-          <h2>Fale com a gente.</h2>
-          <p>Se sua dúvida não apareceu aqui, em breve você poderá abrir uma solicitação diretamente pelo CineAstra.</p>
+      <section className={styles.aiSupport} aria-labelledby="ai-support-title">
+        <div className={styles.aiHeader}>
+          <div>
+            <span className={styles.boardKicker}>Ainda precisa de ajuda?</span>
+            <h2 id="ai-support-title">Converse com a assistente CineAstra</h2>
+            <p>
+              Não encontrou sua resposta nas dúvidas frequentes? Nossa assistente
+              virtual poderá ajudar com outras perguntas sobre o CineAstra.
+            </p>
+          </div>
+
+          <div className={styles.aiStatus}>
+            <span className={styles.statusDot} />
+            Assistente virtual
+          </div>
         </div>
-        <div className={styles.contactTicket}>
-          <span>ATENDIMENTO</span>
-          <strong>CINEASTRA</strong>
-          <span className={styles.contactLine} />
-          <Ticket size={21} aria-hidden="true" />
+
+        <div className={styles.aiChat}>
+          <div className={styles.aiIntro}>
+            <div className={styles.aiAvatar} aria-hidden="true">
+              <Bot size={25} />
+            </div>
+            <div>
+              <strong>Olá! Eu sou a assistente virtual do CineAstra.</strong>
+              <p>Como posso ajudar você hoje?</p>
+            </div>
+          </div>
+
+          <div className={styles.suggestedQuestions}>
+            <span>Perguntas sugeridas</span>
+            <div className={styles.suggestionList}>
+              <button type="button">Quais são os filmes em cartaz?</button>
+              <button type="button">Como comprar ingressos?</button>
+              <button type="button">Quais são os horários das sessões?</button>
+              <button type="button">Quais formas de pagamento são aceitas?</button>
+            </div>
+          </div>
+
+          <form className={styles.aiComposer} onSubmit={(event) => event.preventDefault()}>
+            <input
+              type="text"
+              placeholder="Digite sua dúvida aqui..."
+              aria-label="Digite sua dúvida para a assistente virtual"
+            />
+            <button type="submit" aria-label="Enviar dúvida">
+              <SendHorizontal size={19} aria-hidden="true" />
+            </button>
+          </form>
         </div>
       </section>
     </main>
