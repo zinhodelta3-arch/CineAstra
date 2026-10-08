@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useState } from "react"
-import { ArrowUpRight, Film, House, MapPin, Menu, Popcorn, Sparkles } from "lucide-react"
+import { ArrowUpRight, Film, House, MapPin, Menu, Popcorn, Sparkles, UserRound, UserPlus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Sheet,
@@ -131,6 +131,16 @@ export function MobileNavigation() {
 
           <nav aria-label="Navegação mobile" className="flex-1 overflow-y-auto px-3">
             <NavigationItems mobile onNavigate={() => setOpen(false)} />
+            <div className="mt-2 border-t border-dashed border-border/70 pt-3">
+              <Link href="/login" onClick={() => setOpen(false)} className="flex items-center gap-2.5 rounded-lg px-3.5 py-2.5 text-sm font-semibold text-foreground hover:bg-muted/50">
+                <UserRound className="size-4 opacity-70" aria-hidden="true" />
+                Entrar
+              </Link>
+              <Link href="/cadastro" onClick={() => setOpen(false)} className="mt-1 flex items-center gap-2.5 rounded-lg bg-primary px-3.5 py-2.5 text-sm font-bold text-primary-foreground">
+                <UserPlus className="size-4" aria-hidden="true" />
+                Criar conta
+              </Link>
+            </div>
           </nav>
 
           <TearLine />
