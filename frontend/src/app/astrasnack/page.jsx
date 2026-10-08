@@ -40,31 +40,38 @@ const U = (id, w = 1800) => `https://images.unsplash.com/${id}?auto=format&fit=c
 const BANNERS = [
   {
     id: "banner-1",
-    eyebrow: "AstraSnack • Combos",
-    title: "Vários sabores. Uma só sessão.",
-    description: "Escolha seu combo favorito e deixe a experiência CineAstra ainda mais completa.",
-    image: U("photo-1585647347384-2593bc35786b"),
+    eyebrow: "AstraSnack • Pipocas",
+    title: "Pipoca em primeiro plano.",
+    description: "Quentinha, crocante e em quantidade de sobra para acompanhar a sessão inteira.",
+    image: "https://static.wixstatic.com/media/af4e4c_e2bd4ced91e54b40a1c03c37da08d832~mv2.jpg/v1/fill/w_1600,h_900,al_c,q_90/af4e4c_e2bd4ced91e54b40a1c03c37da08d832~mv2.jpg",
   },
   {
     id: "banner-2",
-    eyebrow: "AstraSnack • Pipocas",
-    title: "O clássico que nunca sai de cartaz.",
-    description: "Pipoca, cinema e aquele momento em que as luzes se apagam.",
-    image: U("photo-1588614959060-4d144f28b207"),
+    eyebrow: "AstraSnack • Bebidas",
+    title: "Refri gelado para completar o filme.",
+    description: "Uma bebida bem gelada, pipoca por perto e a sessão pronta para começar.",
+    image: "https://www.tochinavi.net/img/kuchikomi/02/IMG01_a5f61d64d0824a3c41b70371c89b7b9ad9338a16.jpg",
   },
   {
     id: "banner-3",
-    eyebrow: "AstraSnack • Para compartilhar",
-    title: "Uma sessão pede bons acompanhamentos.",
-    description: "Monte seu pedido para dividir — ou não dividir — durante o filme.",
-    image: U("photo-1578849278619-74b2c2bc9852"),
+    eyebrow: "AstraSnack • Doces",
+    title: "Um pouco de cor entre uma cena e outra.",
+    description: "Balas e guloseimas para deixar cada sessão ainda mais divertida.",
+    image: U("photo-1770021999036-53291a3a6596"),
   },
   {
     id: "banner-4",
-    eyebrow: "AstraSnack • Doces",
-    title: "Seu filme também merece um final doce.",
-    description: "Sabores para acompanhar cada cena, do primeiro trailer aos créditos finais.",
-    image: U("photo-1578985545062-69928b1d9587"),
+    eyebrow: "AstraSnack • Combo CineAstra",
+    title: "Pipoca, bebida e chocolate. Do jeitinho CineAstra.",
+    description: "Um combo completo para levar para a poltrona: pipoca, bebida e doces para compartilhar.",
+    image: "/astrasnack/cineastra-combo.webp",
+  },
+  {
+    id: "banner-5",
+    eyebrow: "AstraSnack • Combo Clássico",
+    title: "Seu combo de cinema, com a cara do CineAstra.",
+    description: "Pipoca, bebida e chocolate juntos para deixar a sessão ainda mais gostosa.",
+    image: "/astrasnack/cineastra-combo-classico.webp",
   },
 ]
 
@@ -153,6 +160,76 @@ function CinemaStyles() {
 
       .astra-ticket::before { left: -11px; }
       .astra-ticket::after { right: -11px; }
+
+      .astra-cart-ticket {
+        position: relative;
+        display: flex;
+        overflow: hidden;
+        isolation: isolate;
+        min-height: 88px;
+        background: var(--primary);
+        color: var(--primary-foreground);
+        border: 0;
+        border-radius: 7px;
+        box-shadow: 0 12px 28px rgba(53, 51, 35, .18);
+      }
+
+      .astra-cart-ticket::before,
+      .astra-cart-ticket::after {
+        content: "";
+        position: absolute;
+        top: 50%;
+        width: 22px;
+        height: 22px;
+        border-radius: 999px;
+        background: var(--background);
+        transform: translateY(-50%);
+        z-index: 3;
+      }
+
+      .astra-cart-ticket::before { left: -12px; }
+      .astra-cart-ticket::after { right: -12px; }
+
+      .astra-cart-ticket-main {
+        position: relative;
+        flex: 1;
+        padding: 13px 15px 11px 20px;
+        background:
+          radial-gradient(circle at 88% 20%, rgba(250,210,65,.18), transparent 28%),
+          linear-gradient(135deg, #971D00, #7C1029 58%, #691528);
+      }
+
+      .astra-cart-ticket-main::after {
+        content: "";
+        position: absolute;
+        right: -1px;
+        top: 10px;
+        bottom: 10px;
+        border-right: 2px dashed rgba(236,225,220,.72);
+      }
+
+      .astra-cart-ticket-stub {
+        width: 54px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-left: 1px dashed rgba(236,225,220,.55);
+        background: rgba(53,51,35,.16);
+      }
+
+      .astra-cart-ticket-stub span {
+        writing-mode: vertical-rl;
+        transform: rotate(180deg);
+        font-size: 8px;
+        font-weight: 900;
+        letter-spacing: .2em;
+        text-transform: uppercase;
+        opacity: .9;
+      }
+
+      .astra-cart-ticket-edge {
+        display: none;
+      }
 
       .astra-card {
         transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
@@ -261,7 +338,7 @@ function BannerCarousel() {
 
   return (
     <div className="relative overflow-hidden rounded-2xl border border-border/70 bg-card shadow-2xl">
-      <div className="relative min-h-[280px] md:min-h-[390px]">
+      <div className="relative min-h-[420px] md:min-h-[520px]">
         {BANNERS.map((item, index) => (
           <div
             key={item.id}
@@ -270,7 +347,7 @@ function BannerCarousel() {
             <img
               src={item.image}
               alt=""
-              className="absolute inset-0 h-full w-full object-cover"
+              className="absolute inset-0 h-full w-full object-cover object-center"
             />
             <div className="absolute inset-0 bg-gradient-to-r from-black via-black/70 to-black/15" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-black/20" />
@@ -279,7 +356,7 @@ function BannerCarousel() {
 
         <div className="astra-perf absolute top-0 right-0 left-0 z-10 h-5 text-white/20" />
 
-        <div className="relative z-10 flex min-h-[280px] items-end p-6 md:min-h-[390px] md:p-10">
+        <div className="relative z-10 flex min-h-[420px] items-end p-6 md:min-h-[520px] md:p-10">
           <div className="max-w-2xl text-white">
             <div className="mb-2 text-[10px] font-bold tracking-[.3em] text-primary uppercase">
               {banner.eyebrow}
@@ -436,10 +513,10 @@ export default function AstraSnackPage() {
   }
 
   return (
-    <main className="astra-grain min-h-screen bg-black text-[#ECE1DC] selection:bg-[#691528] selection:text-[#FAD241]">
+    <main className="astra-grain min-h-screen bg-background text-foreground selection:bg-[#691528] selection:text-[#FAD241]">
       <CinemaStyles />
 
-      <section className="border-b border-border/70">
+      <section className="border-b border-border/70 bg-background">
         <div className="mx-auto max-w-[1600px] px-5 py-6 md:px-8 md:py-8">
           <div className="mb-5 flex items-center justify-between gap-4">
             <div>
@@ -455,13 +532,24 @@ export default function AstraSnackPage() {
               </p>
             </div>
 
-            <div className="hidden rounded-xl border border-border/70 bg-card p-4 text-right sm:block">
-              <div className="text-[10px] font-bold tracking-[.2em] text-muted-foreground uppercase">
-                Seu carrinho
+            <div className="astra-cart-ticket hidden w-52 shrink-0 sm:flex">
+              <div className="astra-cart-ticket-main">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-1.5 text-[9px] font-black tracking-[.2em] uppercase">
+                    <Ticket className="size-3" />
+                    CineAstra
+                  </div>
+                  <ShoppingBag className="size-4" />
+                </div>
+                <div className="mt-2 text-[10px] font-bold tracking-[.18em] uppercase opacity-80">
+                  Meu carrinho
+                </div>
+                <div className="mt-0.5 text-2xl font-black">
+                  {String(cartCount).padStart(2, "0")} <span className="text-xs font-bold opacity-75">itens</span>
+                </div>
               </div>
-              <div className="mt-1 flex items-center justify-end gap-2 text-xl font-black">
-                <ShoppingBag className="size-5 text-primary" />
-                {cartCount}
+              <div className="astra-cart-ticket-stub">
+                <span>AstraSnack • Ticket</span>
               </div>
             </div>
           </div>
@@ -470,7 +558,7 @@ export default function AstraSnackPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1600px] px-5 py-6 md:px-8">
+      <section className="mx-auto max-w-[1600px] bg-background px-5 py-6 md:px-8">
         <div className="mb-7 flex flex-col gap-4 border-b border-border/70 pb-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex gap-1 overflow-x-auto pb-1">
             {CATEGORIES.map((item) => (
