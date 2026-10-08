@@ -66,6 +66,13 @@ const BANNERS = [
     description: "Um combo completo para levar para a poltrona: pipoca, bebida e doces para compartilhar.",
     image: "/astrasnack/cineastra-combo.webp",
   },
+  {
+    id: "banner-5",
+    eyebrow: "AstraSnack • Combo Clássico",
+    title: "Seu combo de cinema, com a cara do CineAstra.",
+    description: "Pipoca, bebida e chocolate juntos para deixar a sessão ainda mais gostosa.",
+    image: "/astrasnack/cineastra-combo-classico.webp",
+  },
 ]
 
 // Apenas um item real para validar a experiência de produto/drawer.
