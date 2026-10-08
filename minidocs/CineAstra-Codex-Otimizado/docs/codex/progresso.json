@@ -1,0 +1,372 @@
+{
+  "versao": 1,
+  "tarefas": [
+    {
+      "id": "00",
+      "titulo": "Diagnóstico focado do projeto",
+      "arquivo": "docs/codex/tasks/00-diagnostico-focado-do-projeto.md",
+      "estado": "PENDENTE",
+      "observacao": ""
+    },
+    {
+      "id": "01",
+      "titulo": "App, env e conexão MySQL",
+      "arquivo": "docs/codex/tasks/01-app-env-e-conexao-mysql.md",
+      "estado": "PENDENTE",
+      "observacao": ""
+    },
+    {
+      "id": "02",
+      "titulo": "Proteção HTTP e limites",
+      "arquivo": "docs/codex/tasks/02-protecao-http-e-limites.md",
+      "estado": "PENDENTE",
+      "observacao": ""
+    },
+    {
+      "id": "03",
+      "titulo": "Swagger e contrato OpenAPI",
+      "arquivo": "docs/codex/tasks/03-swagger-e-contrato-openapi.md",
+      "estado": "PENDENTE",
+      "observacao": ""
+    },
+    {
+      "id": "04",
+      "titulo": "Logs HTTP e auditoria mínima",
+      "arquivo": "docs/codex/tasks/04-logs-http-e-auditoria-minima.md",
+      "estado": "PENDENTE",
+      "observacao": ""
+    },
+    {
+      "id": "05",
+      "titulo": "Cadastro público de cliente",
+      "arquivo": "docs/codex/tasks/05-cadastro-publico-de-cliente.md",
+      "estado": "PENDENTE",
+      "observacao": ""
+    },
+    {
+      "id": "06",
+      "titulo": "Login, JWT e autorização",
+      "arquivo": "docs/codex/tasks/06-login-jwt-e-autorizacao.md",
+      "estado": "PENDENTE",
+      "observacao": ""
+    },
+    {
+      "id": "07",
+      "titulo": "Sessão, revogação e logout",
+      "arquivo": "docs/codex/tasks/07-sessao-revogacao-e-logout.md",
+      "estado": "PENDENTE",
+      "observacao": ""
+    },
+    {
+      "id": "08",
+      "titulo": "Recuperação e reset de senha",
+      "arquivo": "docs/codex/tasks/08-recuperacao-e-reset-de-senha.md",
+      "estado": "PENDENTE",
+      "observacao": ""
+    },
+    {
+      "id": "09",
+      "titulo": "Enrollment e desafio 2FA",
+      "arquivo": "docs/codex/tasks/09-enrollment-e-desafio-2fa.md",
+      "estado": "PENDENTE",
+      "observacao": ""
+    },
+    {
+      "id": "10",
+      "titulo": "Perfil e contas administrativas",
+      "arquivo": "docs/codex/tasks/10-perfil-e-contas-administrativas.md",
+      "estado": "PENDENTE",
+      "observacao": ""
+    },
+    {
+      "id": "11",
+      "titulo": "Endereços, contatos e preferências",
+      "arquivo": "docs/codex/tasks/11-enderecos-contatos-e-preferencias.md",
+      "estado": "PENDENTE",
+      "observacao": ""
+    },
+    {
+      "id": "12",
+      "titulo": "Consentimento, idade e responsável",
+      "arquivo": "docs/codex/tasks/12-consentimento-idade-e-responsavel.md",
+      "estado": "PENDENTE",
+      "observacao": ""
+    },
+    {
+      "id": "13",
+      "titulo": "Exportação e exclusão da conta",
+      "arquivo": "docs/codex/tasks/13-exportacao-e-exclusao-da-conta.md",
+      "estado": "PENDENTE",
+      "observacao": ""
+    },
+    {
+      "id": "14",
+      "titulo": "Gêneros e filmes",
+      "arquivo": "docs/codex/tasks/14-generos-e-filmes.md",
+      "estado": "BLOQUEADA",
+      "observacao": "Implementacao integrada; 59 testes aprovados e OpenAPI valido. Aceite SQL depende de TEST_DB_* e RUN_IDENTITY_MYSQL_TESTS em schema _test vazio nao produtivo. Migration nao aplicada.",
+      "atualizado_em": "2026-10-08T18:11:47.362Z"
+    },
+    {
+      "id": "15",
+      "titulo": "Upload seguro de imagens",
+      "arquivo": "docs/codex/tasks/15-upload-seguro-de-imagens.md",
+      "estado": "CONCLUIDA",
+      "observacao": "Upload ADMIN integrado; 64 testes aprovados; OpenAPI 60 operacoes; decoder/filesystem/abort HTTP reais. Staging local; galeria na 16. Nenhuma migration.",
+      "atualizado_em": "2026-10-08T18:23:33.859Z"
+    },
+    {
+      "id": "16",
+      "titulo": "Galeria de filmes",
+      "arquivo": "docs/codex/tasks/16-galeria-de-filmes.md",
+      "estado": "EM_ANDAMENTO",
+      "observacao": "Integrando galeria V4, lock no filme e compensacao de storage.",
+      "atualizado_em": "2026-10-08T18:27:16.509Z"
+    },
+    {
+      "id": "17",
+      "titulo": "Locais, salas e assentos",
+      "arquivo": "docs/codex/tasks/17-locais-salas-e-assentos.md",
+      "estado": "PENDENTE",
+      "observacao": ""
+    },
+    {
+      "id": "18",
+      "titulo": "Agendamento de sessões",
+      "arquivo": "docs/codex/tasks/18-agendamento-de-sessoes.md",
+      "estado": "PENDENTE",
+      "observacao": ""
+    },
+    {
+      "id": "19",
+      "titulo": "Equipes e membros",
+      "arquivo": "docs/codex/tasks/19-equipes-e-membros.md",
+      "estado": "PENDENTE",
+      "observacao": ""
+    },
+    {
+      "id": "20",
+      "titulo": "Chamados internos",
+      "arquivo": "docs/codex/tasks/20-chamados-internos.md",
+      "estado": "PENDENTE",
+      "observacao": ""
+    },
+    {
+      "id": "21",
+      "titulo": "Notificações",
+      "arquivo": "docs/codex/tasks/21-notificacoes.md",
+      "estado": "PENDENTE",
+      "observacao": ""
+    },
+    {
+      "id": "22",
+      "titulo": "Fornecedores",
+      "arquivo": "docs/codex/tasks/22-fornecedores.md",
+      "estado": "PENDENTE",
+      "observacao": ""
+    },
+    {
+      "id": "23",
+      "titulo": "Insumos e equipamentos",
+      "arquivo": "docs/codex/tasks/23-insumos-e-equipamentos.md",
+      "estado": "PENDENTE",
+      "observacao": ""
+    },
+    {
+      "id": "24",
+      "titulo": "Combos e composição",
+      "arquivo": "docs/codex/tasks/24-combos-e-composicao.md",
+      "estado": "PENDENTE",
+      "observacao": ""
+    },
+    {
+      "id": "25",
+      "titulo": "Galerias de insumos e combos",
+      "arquivo": "docs/codex/tasks/25-galerias-de-insumos-e-combos.md",
+      "estado": "PENDENTE",
+      "observacao": ""
+    },
+    {
+      "id": "26",
+      "titulo": "Movimentos e reserva de estoque",
+      "arquivo": "docs/codex/tasks/26-movimentos-e-reserva-de-estoque.md",
+      "estado": "PENDENTE",
+      "observacao": ""
+    },
+    {
+      "id": "27",
+      "titulo": "Solicitações e logística",
+      "arquivo": "docs/codex/tasks/27-solicitacoes-e-logistica.md",
+      "estado": "PENDENTE",
+      "observacao": ""
+    },
+    {
+      "id": "28",
+      "titulo": "Custos, parâmetros, promoções e cotação",
+      "arquivo": "docs/codex/tasks/28-custos-parametros-promocoes-e-cotacao.md",
+      "estado": "PENDENTE",
+      "observacao": ""
+    },
+    {
+      "id": "29",
+      "titulo": "Métodos tokenizados e provider de pagamento",
+      "arquivo": "docs/codex/tasks/29-metodos-tokenizados-e-provider-de-pagamento.md",
+      "estado": "PENDENTE",
+      "observacao": ""
+    },
+    {
+      "id": "30",
+      "titulo": "Pagamentos, webhook e conciliação",
+      "arquivo": "docs/codex/tasks/30-pagamentos-webhook-e-conciliacao.md",
+      "estado": "PENDENTE",
+      "observacao": ""
+    },
+    {
+      "id": "31",
+      "titulo": "Reembolso e estorno",
+      "arquivo": "docs/codex/tasks/31-reembolso-e-estorno.md",
+      "estado": "PENDENTE",
+      "observacao": ""
+    },
+    {
+      "id": "32",
+      "titulo": "Ocupação ativa de assentos",
+      "arquivo": "docs/codex/tasks/32-ocupacao-ativa-de-assentos.md",
+      "estado": "PENDENTE",
+      "observacao": ""
+    },
+    {
+      "id": "33",
+      "titulo": "Carrinho e cotação de pedido",
+      "arquivo": "docs/codex/tasks/33-carrinho-e-cotacao-de-pedido.md",
+      "estado": "PENDENTE",
+      "observacao": ""
+    },
+    {
+      "id": "34",
+      "titulo": "Checkout e expiração de reservas",
+      "arquivo": "docs/codex/tasks/34-checkout-e-expiracao-de-reservas.md",
+      "estado": "PENDENTE",
+      "observacao": ""
+    },
+    {
+      "id": "35",
+      "titulo": "Emissão e consumo de tickets",
+      "arquivo": "docs/codex/tasks/35-emissao-e-consumo-de-tickets.md",
+      "estado": "PENDENTE",
+      "observacao": ""
+    },
+    {
+      "id": "36",
+      "titulo": "Estados operacionais, entrada e saída",
+      "arquivo": "docs/codex/tasks/36-estados-operacionais-entrada-e-saida.md",
+      "estado": "PENDENTE",
+      "observacao": ""
+    },
+    {
+      "id": "37",
+      "titulo": "Streaming avulso e reprodução",
+      "arquivo": "docs/codex/tasks/37-streaming-avulso-e-reproducao.md",
+      "estado": "PENDENTE",
+      "observacao": ""
+    },
+    {
+      "id": "38",
+      "titulo": "Planos, contratação e benefícios",
+      "arquivo": "docs/codex/tasks/38-planos-contratacao-e-beneficios.md",
+      "estado": "PENDENTE",
+      "observacao": ""
+    },
+    {
+      "id": "39",
+      "titulo": "Convites, participantes e rateio",
+      "arquivo": "docs/codex/tasks/39-convites-participantes-e-rateio.md",
+      "estado": "PENDENTE",
+      "observacao": ""
+    },
+    {
+      "id": "40",
+      "titulo": "Cobranças, atraso e cancelamento de planos",
+      "arquivo": "docs/codex/tasks/40-cobrancas-atraso-e-cancelamento-de-planos.md",
+      "estado": "PENDENTE",
+      "observacao": ""
+    },
+    {
+      "id": "41",
+      "titulo": "Streaming por assinatura",
+      "arquivo": "docs/codex/tasks/41-streaming-por-assinatura.md",
+      "estado": "PENDENTE",
+      "observacao": ""
+    },
+    {
+      "id": "42",
+      "titulo": "Inscrição e confirmação de newsletter",
+      "arquivo": "docs/codex/tasks/42-inscricao-e-confirmacao-de-newsletter.md",
+      "estado": "PENDENTE",
+      "observacao": ""
+    },
+    {
+      "id": "43",
+      "titulo": "Preferências e descadastro newsletter",
+      "arquivo": "docs/codex/tasks/43-preferencias-e-descadastro-newsletter.md",
+      "estado": "PENDENTE",
+      "observacao": ""
+    },
+    {
+      "id": "44",
+      "titulo": "Categorias e campanhas newsletter",
+      "arquivo": "docs/codex/tasks/44-categorias-e-campanhas-newsletter.md",
+      "estado": "PENDENTE",
+      "observacao": ""
+    },
+    {
+      "id": "45",
+      "titulo": "Worker de envio newsletter",
+      "arquivo": "docs/codex/tasks/45-worker-de-envio-newsletter.md",
+      "estado": "PENDENTE",
+      "observacao": ""
+    },
+    {
+      "id": "46",
+      "titulo": "Suporte e histórico",
+      "arquivo": "docs/codex/tasks/46-suporte-e-historico.md",
+      "estado": "PENDENTE",
+      "observacao": ""
+    },
+    {
+      "id": "47",
+      "titulo": "FAQ, institucional, contratos e IA",
+      "arquivo": "docs/codex/tasks/47-faq-institucional-contratos-e-ia.md",
+      "estado": "PENDENTE",
+      "observacao": ""
+    },
+    {
+      "id": "48",
+      "titulo": "Relatórios e consulta administrativa",
+      "arquivo": "docs/codex/tasks/48-relatorios-e-consulta-administrativa.md",
+      "estado": "PENDENTE",
+      "observacao": ""
+    },
+    {
+      "id": "49",
+      "titulo": "Marco de revisão de identidade e cadastros",
+      "arquivo": "docs/codex/tasks/49-marco-de-revisao-de-identidade-e-cadastros.md",
+      "estado": "PENDENTE",
+      "observacao": ""
+    },
+    {
+      "id": "50",
+      "titulo": "Marco de revisão comercial e concorrência",
+      "arquivo": "docs/codex/tasks/50-marco-de-revisao-comercial-e-concorrencia.md",
+      "estado": "PENDENTE",
+      "observacao": ""
+    },
+    {
+      "id": "51",
+      "titulo": "Auditoria final e entrega",
+      "arquivo": "docs/codex/tasks/51-auditoria-final-e-entrega.md",
+      "estado": "PENDENTE",
+      "observacao": ""
+    }
+  ]
+}

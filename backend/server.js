@@ -15,7 +15,7 @@ export async function startServer(config, overrides = {}) {
     const retention = overrides.retention ?? createLogRetention(model, config.logging);
     const lifecycle = { stopping: false };
     let app;
-    try { app = createApp({ config, database, logQueue: queue, retention, lifecycle }); }
+    try { app = createApp({ config, database, logQueue: queue, retention, lifecycle, identityProviders: overrides.identityProviders, captchaProvider: overrides.captchaProvider, storeFactory: overrides.storeFactory }); }
     catch (error) { await queue.close(); await database.close(); throw error; }
     const server = createServer(app);
     server.requestTimeout = config.httpTimeout;

@@ -1,4 +1,4 @@
-// Somente colunas confirmadas no schema v3. Sessão/revogação serão integradas no 02.
+// Projeção mínima do usuário atual; sessão/revogação são resolvidas pelo provider de identidade.
 export function createUserAccessModel(database) {
     return {
         async findById(id, { signal } = {}) {

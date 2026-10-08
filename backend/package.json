@@ -6,7 +6,10 @@
   "author": "",
   "type": "module",
   "main": "app.js",
-  "engines": { "node": ">=24.14.1 <25", "npm": ">=11 <12" },
+  "engines": {
+    "node": ">=24.14.1 <25",
+    "npm": ">=11 <12"
+  },
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
@@ -14,7 +17,11 @@
     "test:integration": "node --test tests/integration/*.test.js",
     "validate:openapi": "node scripts/validateOpenapi.js",
     "migrate": "node scripts/migrate.js",
-    "db:inspect": "node scripts/inspectDatabase.js"
+    "db:inspect": "node scripts/inspectDatabase.js",
+    "bootstrap:admin": "node scripts/bootstrapAdmin.js",
+    "generate:openapi:identity": "node scripts/generateIdentityOpenapi.js",
+    "generate:openapi:catalog": "node scripts/generateCatalogOpenapi.js",
+    "generate:openapi:uploads": "node scripts/generateImageUploadOpenapi.js"
   },
   "dependencies": {
     "bcryptjs": "3.0.3",
@@ -23,11 +30,12 @@
     "express": "^5.2.1",
     "express-rate-limit": "8.7.1",
     "helmet": "^8.3.0",
+    "jsonwebtoken": "9.0.3",
     "multer": "^2.4.0",
     "mysql2": "3.24.5",
-    "jsonwebtoken": "9.0.3",
-    "swagger-ui-express": "5.0.1",
     "otpauth": "9.5.2",
+    "sharp": "0.35.5",
+    "swagger-ui-express": "5.0.1",
     "zod": "4.6.5"
   },
   "devDependencies": {

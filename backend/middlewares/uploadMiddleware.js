@@ -1,10 +1,9 @@
 import multer from 'multer';
 import { ApiError } from '../utils/ApiError.js';
 
-// Não há rota de upload neste módulo. Montar SOMENTE depois de autenticação,
-// escopo e limiter. Storage/assinatura real/decodificação/compensação ficam no 03.
+// Montar somente após autenticação, autorização, rate limit e admissão de concorrência.
 export function createImageUpload({ maxFileSize = 5242880 } = {}) {
-    return multer({ storage: multer.memoryStorage(), limits: { fileSize: maxFileSize, files: 1, fields: 4, parts: 5, fieldSize: 2048, fieldNameSize: 80 },
+    return multer({ storage: multer.memoryStorage(), limits: { fileSize: maxFileSize, files: 1, fields: 0, parts: 2, fieldSize: 0, fieldNameSize: 80, headerPairs: 20 },
         fileFilter: (req, file, cb) => {
             if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)) return cb(new ApiError('Mídia não suportada', 415, null, 'UNSUPPORTED_MEDIA'));
             cb(null, true);

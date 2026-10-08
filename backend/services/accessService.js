@@ -5,7 +5,7 @@ export const ROLES = Object.freeze(['CLIENTE', 'FORNECEDOR', 'SUPERVISOR', 'COLA
 export function createAccessService(userModel, sessionProvider = { async verifyActive() { throw ApiError.indisponivel(); } }) {
     return {
         async resolve(claims, { signal } = {}) {
-            // Fail closed até sessão persistida/revogação/2FA do 02, sem inventar tabela.
+            // O provider de identidade resolve persistência/revogação antes do perfil atual.
             const session = await sessionProvider.verifyActive({ userId: claims.sub, sessionId: claims.sid, jti: claims.jti, signal });
             const expiry = session ? new Date(session.expiresAt).getTime() : NaN;
             if (!session || session.userId !== claims.sub || session.revoked || !Number.isFinite(expiry) || expiry <= Date.now()) throw ApiError.naoAutorizado();

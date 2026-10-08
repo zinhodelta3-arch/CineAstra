@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'node:url';
 import { isIP } from 'node:net';
+import { isAbsolute } from 'node:path';
 
 export function loadEnvironment() {
     dotenv.config({ path: fileURLToPath(new URL('../.env', import.meta.url)), quiet: true });
@@ -56,21 +57,30 @@ export function validateEnv(env = process.env) {
     if ((env.CAPTCHA_PROVIDER ?? 'unavailable') !== 'unavailable') errors.add('CAPTCHA_PROVIDER');
     const encryptionKey = env.TWO_FACTOR_ENCRYPTION_KEY || null;
     if (encryptionKey && (!/^[A-Za-z0-9+/]{43}=$/.test(encryptionKey) || Buffer.from(encryptionKey, 'base64').length !== 32)) errors.add('TWO_FACTOR_ENCRYPTION_KEY');
+    const mediaHosts = (env.CATALOG_MEDIA_HOSTS ?? '').split(',').map(v => v.trim().toLowerCase()).filter(Boolean);
+    if (mediaHosts.some(v => !/^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(v))) errors.add('CATALOG_MEDIA_HOSTS');
     const config = {
+        imageUpload: { directory: env.IMAGE_STAGING_DIR || (!production ? fileURLToPath(new URL('../.storage/images', import.meta.url)) : null) },
+        catalog: { mediaHosts },
         mode, production, docsEnabled, origins, trustProxy, publicOrigin, instances, rateLimitStore,
         host: env.HOST ?? '127.0.0.1', port: integer('PORT', 3001, 1, 65535),
         bodyLimit: integer('BODY_LIMIT_BYTES', 65536, 1024, 1048576),
         httpTimeout: integer('HTTP_TIMEOUT_MS', 10000, 100, 10000),
         shutdownTimeout: integer('SHUTDOWN_TIMEOUT_MS', 10000, 100, 30000),
         jwt: { secret, issuer: required('JWT_ISSUER'), audience: required('JWT_AUDIENCE'), ttl: integer('JWT_TTL_SECONDS', 900, 60, 900) },
-        identity: { encryptionKey, bcryptCost: integer('BCRYPT_COST', 12, 10, 14), termsVersion: env.TERMS_VERSION || null, privacyVersion: env.PRIVACY_VERSION || null },
+        identity: { encryptionKey, bcryptCost: integer('BCRYPT_COST', 12, 10, 14), termsVersion: env.TERMS_VERSION || null, privacyVersion: env.PRIVACY_VERSION || null, legalBasis: env.IDENTITY_LEGAL_BASIS || null },
         db: { host: required('DB_HOST'), port: integer('DB_PORT', 3306, 1, 65535), user: required('DB_USER'), password: required('DB_PASSWORD'), database: required('DB_NAME'),
             connectionLimit: integer('DB_CONNECTION_LIMIT', 10, 1, 100), queueLimit: integer('DB_QUEUE_LIMIT', 100, 1, 1000), timeout: integer('DB_TIMEOUT_MS', 3000, 100, 5000) },
         rate: { max: integer('RATE_LIMIT_MAX', 120, 1, 10000), windowMs: integer('RATE_LIMIT_WINDOW_MS', 60000, 100, 3600000) },
         logging: { queueLimit: integer('LOG_QUEUE_LIMIT', 200, 1, 10000), sampleRate, retentionMode, purgeInterval: integer('LOG_PURGE_INTERVAL_MS', 900000, 60000, 3600000) }
     };
     if (config.db.database && !/^[a-zA-Z0-9_]+$/.test(config.db.database)) errors.add('DB_NAME');
+    if (config.imageUpload.directory && !isAbsolute(config.imageUpload.directory)) errors.add('IMAGE_STAGING_DIR');
+    if (instances > 1) config.imageUpload.directory = null; // Staging local exige instância única.
     if (config.db.timeout >= config.httpTimeout) errors.add('DB_TIMEOUT_MS');
+    for (const [key, value, max] of [['TERMS_VERSION', config.identity.termsVersion, 50], ['PRIVACY_VERSION', config.identity.privacyVersion, 50], ['IDENTITY_LEGAL_BASIS', config.identity.legalBasis, 100]]) {
+        if (value && (!value.trim() || value.length > max)) errors.add(key);
+    }
     if (errors.size) throw new Error(`Configuração inválida: ${[...errors].sort().join(', ')}`);
     return Object.freeze(config);
 }

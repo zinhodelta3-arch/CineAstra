@@ -6,6 +6,8 @@ Atualização Prompt01(08/10/2026): as47entidades abaixo continuam inventário v
 
 ## Convenções e entidades (47)
 
+Atualização Prompt02 (08/10/2026): `20261008_01_identity.sql` acrescenta oito tabelas: sessoes_autenticacao, desafios_2fa, consentimentos_usuario, verificacoes_idade, responsaveis_usuario, controles_parentais, autorizacoes_responsavel e solicitacoes_privacidade. Altera usuarios (normalização gerada/UNIQUE), autenticacao_2fa (passo/UNIQUE), enderecos/contatos (principal gerado/UNIQUE) e preferencias_usuario (aparencia). `20261008_02_identity_guard.sql` cria identity_admin_guard e linha1 para serialização administrativa/bootstrap. Alvo total **59 tabelas com ledger**, plano88statements, nenhuma aplicação comprovada. Detalhes de finalidade, compatibilidade, locks e testes em [backend-identity.md](backend-identity.md). A lista original abaixo segue sendo o inventário v3+V4, não uma listagem de banco migrado.
+
 PK simples abaixo é AUTO_INCREMENT; `I` = INT UNSIGNED, `B` = BIGINT UNSIGNED. FKs têm tipo do alvo; relações sem ON DELETE explícito preservam RESTRICT/NO ACTION, não CASCADE. Índices FK podem ser implícitos/reaproveitados pelo InnoDB, nome real exige SHOW CREATE/STATISTICS. DECIMAL de valores/preços (10,2), descontos (5,2). DATETIME técnico sem timezone embutido, DATE calendário e TIME horário; só logs tem DATETIME(3). BOOLEAN é TINYINT e não implica CHECK universal. Tabelas base dependem do default engine do servidor, V4 fixa InnoDB.
 
 | Tabela / PK | Colunas funcionais além da PK | FKs -> tabela.coluna | UNIQUE / CHECK / particularidades |

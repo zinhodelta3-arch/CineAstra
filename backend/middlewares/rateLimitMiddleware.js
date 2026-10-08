@@ -15,7 +15,8 @@ export function createLimits(config, storeFactory) {
     };
     const ip = req => ipKeyGenerator(req.ip);
     const identity = req => {
-        const key = req.usuario?.id ?? (typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : 'anonymous');
+        const challenge = typeof req.body?.challengeToken === 'string' && /^[a-f0-9]{64}$/.test(req.body.challengeToken) ? req.body.challengeToken : null;
+        const key = req.usuario?.id ?? (typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : challenge ?? 'anonymous');
         return createHash('sha256').update(key).digest('hex');
     };
     const flows = {};

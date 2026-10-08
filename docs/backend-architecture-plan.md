@@ -1,6 +1,14 @@
 # CineAstra — diagnóstico e contrato arquitetural (Prompt 00)
 
-Diagnóstico: 06/10/2026. Atualização Prompt 01: 08/10/2026. **Fundação implementada com pendências de MySQL/infra; não pronto para produção.** As seções 1–10 abaixo preservam o snapshot/planejamento do Prompt 00; o estado atual e as decisões implementadas estão na seção 11. Nenhum módulo de negócio nem alteração no banco real foi executado.
+## Atualização tarefa 15 — 08/10/2026
+
+Upload ADMIN integrado como staging privado e temporário, sem migration ou mutação de catálogo. Routes -> controller -> service -> storage; Sharp valida/decodifica/reencoda pixels fora das transações MySQL. Autenticação/2FA/limiter existentes precedem Multer; sessão revalidada antes de persistir. Armazenamento local exclusivo de instância única, nomes UUID, limites/quota/TTL/cleanup e prévia autenticada; tarefa 16 promoverá imagens para galeria durável. Config `IMAGE_STAGING_DIR`; detalhes e limites em [backend-image-uploads.md](backend-image-uploads.md). Testes com processamento/filesystem/socket reais; SQL de autenticação continua dependência existente.
+
+## Atualização tarefa 14 — 08/10/2026
+
+Catálogo integrado à estrutura existente (routes/validators/controllers/services/models) e à autorização/transação/auditoria/outbox de identidade. Contrato detalhado em [backend-catalog.md](backend-catalog.md). CRUD ADMIN + 2FA, catálogo público ativo com paginação por ID e filtros; projeção pública exclui mídia privada. DELETE arquiva sempre e preserva associações. Migration `20261008_03_catalog_genres.sql` adiciona somente status a gêneros; filmes e V4 reutilizados. `CATALOG_MEDIA_HOSTS` valida hosts exatos HTTPS; nenhuma entrega de playback/upload implementada. SQL real/migration não executados por falta de ambiente isolado. Demais seções mantêm o histórico do diagnóstico e decisões anteriores.
+
+Diagnóstico: 06/10/2026. Atualização Prompt 02: 08/10/2026. **Fundação e identidade integradas com pendências de MySQL/providers/privacidade; não pronto para produção.** Seções 1–10 preservam o diagnóstico; seção 11 registra o Prompt01. O estado do Prompt02 está na seção 12 e em [backend-identity.md](backend-identity.md). Nenhuma alteração no banco real foi executada.
 
 ## 1. Fontes e limites da evidência
 
@@ -217,4 +225,17 @@ Decisões pendentes com dono: jurídico/produto — base da meia (preco_inteira 
 - M00/M01 artefatos: runner manifest por statements/checksum/GET_LOCK/markerRUNNING antes de DDL, exclui USE/create database,seeds,SELECTs de exemplo e eventos; base sem ledger requer baseline manual. SQLs antigos intactos. Nova migration `20261006_01_infrastructure_events.sql` cria auditoria_eventos/outbox_eventos, helper audit mínimo na conexão caller. **Nenhuma migration aplicada, nenhum evento de negócio emitido; consumer outbox e política por evento permanecem antes dos módulos comerciais.** Schema documental estendido esperado49tabelas+ledger=50, em vez das47do00; banco real desconhecido.
 - `/uploads` deixou de ser montagem estática genérica. Infra Multer restrita/lazy e gate de validador real; nenhum upload de negócio/publicação de bytes. Conteúdo real/storage/compensação continuam no03.
 
-Critérios comprovados por execução isolada e HTTP estão no handoff/coverage01. Pendências impeditivas: configdev/test/SHOWCREATE/integraçãoMySQL e baseline/DDL real, provider sessão02/CAPTCHA, store multi-instância, TLS/WAF/backups/monitoramento. M02–M16 continuam planejadas, não executadas. Próxima rodada de negócio: Prompt02 identidade, somente após consumir a fundação e reconhecer as pendências de banco/provider.
+Critérios comprovados por execução isolada e HTTP estão no handoff/coverage01. Pendências impeditivas naquele checkpoint: configdev/test/SHOWCREATE/integraçãoMySQL e baseline/DDL real, provider sessão02/CAPTCHA, store multi-instância, TLS/WAF/backups/monitoramento. O estado posterior de M02–M04 consta abaixo.
+
+## 12. Prompt 02 — DECISÕES COMPARTILHADAS implementadas
+
+Detalhamento e evidências: [backend-identity.md](backend-identity.md); checkpoint: [backend-handoff.md](backend-handoff.md).
+
+- Preservados ESM, `/api`, models/controllers/routes/services globais, pool/transação, JWT, logger, limiter e spec única. `createApp` compõe identidade por padrão e usa SessionProvider SQL; não há mais sessão indisponível por ausência de implementação. Lookup SQL/migration ausente ainda falha fechado. Frontend intacto.
+- `identityModel` usa schema v3+M02/M03/M04, SQL parametrizado, whitelists e projeções. `identityService` cuida de credenciais, sessões, reset, TOTP e idade; `profileService`, de propriedade, perfil, privacidade, administração e supervisão parental. Middleware não é autorização final: mutações revalidam sessão/status sob lock do usuário.
+- JWT máximo 15min, sem refresh/cookies. JTI e tokens opacos persistidos em hash. Segredo TOTP cifrado com AES-GCM/AAD por usuário. APP implementado; SMS/EMAIL ainda 503 até protocolo/provider real integrado. Desafio 5min/5tentativas; reset30min; tentativa inválida commitada; passo TOTP crescente. Rotação mantém fator antigo até prova e revoga sessões na conclusão.
+- Cadastro CLIENTE requer CAPTCHA, termos/privacidade/base legal configurados, proof provider de idade e vínculo legal para até16. Autodeclaração não basta. Administração cria somente contas internas; bootstrap primeiro ADMIN via stdin e guard persistido. Nunca usar seed/hash fixo. Mudança de acesso revoga sessões/desafios/resets e preserva último ADMIN ativo.
+- Endereços/contatos principais bloqueiam usuário antes dos filhos; UNIQUE geradas existentes mantidas. Locks administrativos: guard → usuários por ID → filhos. Recuperação/2FA: lookup inicial sem lock → usuário → token/fator com releitura. E-mail/provas/CAPTCHA fora de transações. Auditoria/outbox junto à alteração.
+- Export próprio paginado por seção, sem segredos. DELETE desativa e cria solicitação RECEBIDA, HTTP202; Location permite acompanhamento ADMIN. Retenção/anonimização e conclusão real dependem de política aprovada. Não converter desativação em alegação de eliminação LGPD. Sem apagar fatos financeiros/consentimentos ou aplicar expurgo90dias a estes.
+- Migration `20261008_01_identity.sql` preexistente reaproveitada; nova `20261008_02_identity_guard.sql` adicionada. Plano88statements, alvo59tabelas com ledger. Nenhuma aplicada; duplicatas normalizadas/principais/fatores e DDL real exigem inspeção prévia.
+- 34 operações de identidade documentadas; 54 testes isolados/HTTP aprovados. Integração MySQL nova testa baseline+upgrade e concorrência, mas foi pulada sem config. Fontes integrais agora estão nos caminhos de docs previstos. Nenhuma funcionalidade de módulos03–15 iniciada.

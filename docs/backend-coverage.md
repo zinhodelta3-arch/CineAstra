@@ -1,6 +1,27 @@
 # CineAstra — matriz de cobertura e contratos (Prompt 00)
 
-Snapshot diagnóstico:06/10/2026. Atualização Prompt01:08/10/2026. **Infraestrutura implementada; fluxos HTTP de negócio ainda ausentes.** As matrizes RF/RN/RNF originais abaixo preservam o planejamento00, não certificam domínio entregue. Estado atualizado da fundação está na seção Prompt01 ao fim deste documento. Fontes/achados: [arquitetura](backend-architecture-plan.md); PK/FK/ENUM/CHECK/índices: [inventário](backend-schema-inventory.md); execução e bloqueios: [handoff](backend-handoff.md).
+## Atualização tarefa 15 — 08/10/2026
+
+| Requisito | Entrega / limite | Evidência |
+| --- | --- | --- |
+| RNF05 | Upload de imagem limitado e reprocessado, endpoint de prévia privada; exibição visual frontend não alterada | imageUpload.test.js; POST/GET/DELETE /api/admin/uploads/images; OpenAPI multipart |
+| RNF17 (upload) | ADMIN/2FA, rate limit, conteúdo real, memória/pixels/dimensões/concorrência limitados, paths internos, cleanup, sem fetch | 5 grupos novos; regressão 64/64; decoder, filesystem e abort HTTP reais |
+| Limites operacionais | Staging local, instância única, quota 200/TTL 24h; promoção à galeria futura | Sem migration; produção exige volume privado; aceite MySQL da 14 permanece pendente |
+
+Detalhes e fontes oficiais da revisão de dependências: [backend-image-uploads.md](backend-image-uploads.md).
+
+## Atualização tarefa 14 — 08/10/2026
+
+| Requisito | Entrega e limite | Evidência |
+| --- | --- | --- |
+| RF45 — filmes/gêneros | CRUD ADMIN, associação, arquivamento preserva vínculos; outros cadastros não pertencem à tarefa | `catalog.test.js`, 18 operações OpenAPI |
+| RF08 — parcial | Catálogo público, filtros, metadados e preços exatos; sem aluguel/compra/playback | Projeção sem URL privada e validação de preços |
+| Segurança/contrato global | ADMIN + 2FA, sessão atual, campos permitidos, SQL parametrizado, auditoria/outbox transacional | Suíte isolada + regressão total 59 testes aprovados |
+| Banco real | Migration explícita status gênero; cenário de integração preparado | BLOQUEADO: 2 suítes MySQL puladas, `TEST_DB_*`/opt-in ausentes; nenhuma migration aplicada |
+
+Detalhes/limites: [backend-catalog.md](backend-catalog.md). Matrizes abaixo são históricas; esta atualização prevalece apenas para o catálogo da tarefa 14.
+
+Snapshot diagnóstico:06/10/2026. Atualização Prompt02:08/10/2026. **Infraestrutura e identidade integradas, com pendências reais de MySQL/providers/privacidade.** Matrizes originais preservam planejamento00; as seções Prompt01/Prompt02 ao fim atualizam somente seus respectivos escopos. Fontes/achados: [arquitetura](backend-architecture-plan.md); PK/FK/ENUM/CHECK/índices: [inventário](backend-schema-inventory.md); execução e bloqueios: [handoff](backend-handoff.md).
 
 ## DECISÕES COMPARTILHADAS
 
@@ -166,3 +187,28 @@ Executados: sintaxe dos 8 arquivos JS backend aprovada; 6 assertions isoladas de
 **Banco:** runner offline manifest+ledger proposto e nova migration M01auditoria/outbox criados. Nenhum SQL executado; base existente sem ledger recusada, explicit baseline manual obrigatório. Logs/nome_cine/V4aplicados continuam desconhecidos. Migrations/tablePKFKENUMs foram inspecionadas como fontes, não database vivo.
 
 **Testes:** fixtures SQL/session/retention de unit/HTTP explicitamente simuladas, mocks não provam sessão real/locks/scheduler. OpenAPI validada e UI/assets respondem com configurações seguras. TesteMySQLreal isolado existe e registra skip por TEST_DB_*não fornecidos; resultados finais/contagem/comandos estão no handoff01. Nenhum RFde negócio foi promovido a funcional com base nos testes da infraestrutura.
+
+## Prompt 02 — cobertura atual de identidade (08/10/2026)
+
+Implementação integrada não equivale a aceite de MySQL ou providers reais. Evidências: `backend/tests/identity.test.js` (20 testes), regressão fundação (34), `tests/integration/identity.mysql.test.js` (não executado sem configuração), `backend/docs/openapi.json` (34 operações desta etapa). Contratos e dependências: [backend-identity.md](backend-identity.md).
+
+| Requisito | Implementação/endpoint | Evidência executada | Limite / dependência |
+| --- | --- | --- | --- |
+| RF01 / RN24 | POST auth/register, users/me/age-verification; proofs, consentimentos/versões/base legal, responsável | Cadastro só CLIENTE, mass assignment/CPF/data negados, prova inválida/ausente, menor/vínculo, renovação | Parcial operacional: provider idade/CAPTCHA/vínculo legal e documentos aprovados ausentes; banco não migrado |
+| RF02 / RN02 | login de perfis, admin/users e /:id/access, SessionProvider SQL, bootstrap:admin | JWT/sessão/status/JTI/logout, CLIENTE negado em admin, último ADMIN preservado | SQL/bootstrap real aguardam teste; reativação exige revisão |
+| RF03 | forgot/reset com token hash, prazo, consumo e revogação | Resposta genérica, entrega falha sem falso sucesso, reset único e login antigo negado | E-mail real não configurado; SQL concorrente pendente |
+| RF04 / RNF16 | 2fa/enroll/verify/disable, TOTP, rotacionar por enrollment autorizado | AD/S sem token pleno antes da prova, 5 tentativas commitadas, replay/bypass negados, cifragem/rotação/revogação | APP integrado; SMS/EMAIL aguardam adapter/protocolo/destino; chave real e recuperação de fator perdido/legado pendentes |
+| RF05 / RNF23 | GET/PATCH/DELETE me, POST export; solicitação de exclusão durável | Reauth, campos estritos, export sem segredo, desativação/revogação e solicitação RECEBIDA | Parcial: anonimização final, retenção e resolução não automatizadas sem política; export cobre identidade, outros módulos devem ampliar |
+| RF06 | CRUD addresses/contacts próprio, principal único | IDOR em GET/PATCH/DELETE, validação por tipo, principal e paginação | Métodos de pagamento ficam09; constraint/locks reais pendentes |
+| RF07 | GET/PATCH preferences; aparência separada de tema | Preferências persistidas no repository de teste e validadas no HTTP | Frontend/acessibilidade visual não alterados nem certificados |
+| RNF07/09 | Validadores Zod estritos, respostas/erros estáveis, IDs string | CPF/data/limite72bytes/duplicata/ID/paginação/erros seguros | Integridade real depende das migrations/constraints |
+| RNF13/15/21 | Confirmação, bcryptjs assíncrono custo12, normalização/UNIQUE | Política UTF-8 sem truncamento, bcrypt, cadastro duplicado; 3 hashes custo12 medidos180–185ms | CNPJ pertence06; HTTPS é infraestrutura, carga/calibração produtiva não testadas |
+| RNF17/18 | SQL parametrizado/whitelist, propriedade, sessão sob lock, limites IP/identidade/desafio | Injeção não entra em SQL, IDOR/mass assignment negados, revogação entre middleware/service, logs sem segredo | Sem cookies; CSRF revisto se transporte mudar; store compartilhado e testeMySQL pendentes |
+| RNF19 | Config validada, chave AES separada, .env.example sem segredos | Suíte fundação/env; deps/lock preservados | Config real não fornecida |
+| RNF20 | CAPTCHA obrigatório e fail-closed nas rotas sensíveis | Ausência/false/provider indisponível retornam422/503 | ProviderCAPTCHA real, WAF/Cloudflare operacionais pendentes |
+| RNF22 | Nenhum dado de cartão ou método financeiro criado | Escopo preservado | Prompt09; não declarar atendido por identidade |
+| RF46 (infra de auditoria) | identityModel/services usam recordAuditEvent/outbox na transação | Alterações auditadas; rollback no repository de teste e testeMySQL preparado | Consulta geral de auditoria/relatórios ainda14; consumer/retention por evento pendentes |
+
+RF08–46 e demais RN/RNF não foram ampliados fora das dependências explícitas desta etapa. Frontend (incluindo RNF14 senha visível/oculta) não alterado. Não há declaração de conformidade LGPD/ECA Digital, SLA ou prontidão produtiva.
+
+**Resultado:** `npm test`54/54; OpenAPI39operações validada; integraçãoMySQL2skips; audit0vulnerabilidades reportadas; sintaxe47JS e diffcheck aprovados. Plano88statements, nenhuma migration aplicada. Próximo aceite exige banco isolado + providers/políticas descritos no handoff.

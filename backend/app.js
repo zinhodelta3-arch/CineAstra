@@ -16,18 +16,34 @@ import { createHealthService } from './services/healthService.js';
 import { createHealthController } from './controllers/healthController.js';
 import { infrastructureRoutes } from './routes/infrastructureRoutes.js';
 import { unavailableCaptchaProvider } from './providers/captchaProvider.js';
+import { unavailableIdentityProviders } from './providers/identityProviders.js';
+import { createIdentityModel } from './models/identityModel.js';
+import { createIdentityService } from './services/identityService.js';
+import { createProfileService } from './services/profileService.js';
+import { createIdentityController } from './controllers/identityController.js';
+import { identityRoutes } from './routes/identityRoutes.js';
+import { createCatalogModel } from './models/catalogModel.js';
+import { createCatalogService } from './services/catalogService.js';
+import { createCatalogController } from './controllers/catalogController.js';
+import { catalogRoutes } from './routes/catalogRoutes.js';
+import { createImageStorage } from './models/imageStorage.js';
+import { createImageUploadService } from './services/imageUploadService.js';
+import { createImageUploadController } from './controllers/imageUploadController.js';
+import { imageUploadRoutes } from './routes/imageUploadRoutes.js';
 
 const specification = JSON.parse(readFileSync(new URL('./docs/openapi.json', import.meta.url), 'utf8'));
 
-export function createApp({ config, database, logQueue, retention, sessionProvider, storeFactory, lifecycle = { stopping: false }, registerRoutes }) {
+export function createApp({ config, database, logQueue, retention, sessionProvider, storeFactory, identityModel, identityProviders = unavailableIdentityProviders(), captchaProvider = unavailableCaptchaProvider(), lifecycle = { stopping: false }, registerRoutes }) {
     const app = express();
     app.disable('x-powered-by');
     app.set('trust proxy', config.trustProxy.length ? config.trustProxy : false);
     app.set('json replacer', (key, value) => typeof value === 'bigint' ? value.toString() : value);
     const limits = createLimits(config, storeFactory);
     const tokens = createJwt(config.jwt);
-    const auth = createAuthMiddleware(tokens, createAccessService(createUserAccessModel(database), sessionProvider));
-    const dependencies = { auth, limits: limits.flows, captcha: unavailableCaptchaProvider() };
+    const identity = createIdentityService({ database, model: identityModel ?? createIdentityModel(database), config, tokens, providers: identityProviders });
+    const profile = createProfileService({ identity, config, providers: identityProviders });
+    const auth = createAuthMiddleware(tokens, createAccessService(createUserAccessModel(database), sessionProvider ?? identity.sessionProvider));
+    const dependencies = { auth, limits: limits.flows, captcha: captchaProvider };
     app.locals.close = () => limits.close();
     app.use(requestId);
     app.use(logMiddleware(logQueue, { sampleRate: config.logging.sampleRate }));
@@ -51,7 +67,15 @@ export function createApp({ config, database, logQueue, retention, sessionProvid
             swaggerUi.serveFiles(spec, { swaggerOptions: { persistAuthorization: false, validatorUrl: null } }),
             swaggerUi.setup(spec, { swaggerOptions: { persistAuthorization: false, validatorUrl: null }, customSiteTitle: 'CineAstra API' }));
     }
-    // Único ponto de composição para módulos futuros e fixtures explícitas de testes.
+    app.use(identityRoutes(createIdentityController(identity, profile), dependencies));
+    app.use(catalogRoutes(createCatalogController(createCatalogService({ model: createCatalogModel(database), identity, mediaHosts: config.catalog?.mediaHosts ?? [] })), dependencies));
+    app.use(imageUploadRoutes(createImageUploadController(createImageUploadService({
+        storage: createImageStorage(config.imageUpload),
+        authorize: context => identity.transaction(async c => {
+            if ((await identity.activeActor(c, context)).tipo_usuario !== 'ADMIN') throw ApiError.acessoNegado();
+        }, context)
+    })), dependencies));
+    // Ponto de composição para módulos futuros e fixtures explícitas de testes.
     registerRoutes?.(app, dependencies);
     app.use((req, res, next) => next(ApiError.naoEncontrado()));
     app.use(errorMiddleware);

@@ -4,7 +4,7 @@ import { ApiError } from '../utils/ApiError.js';
 export function unavailableIdentityProviders() {
     const unavailable = async () => { throw ApiError.indisponivel(); };
     return {
-        email: { async assertAvailable() { await unavailable(); }, sendRecovery: unavailable },
+        email: { async assertAvailable() { await unavailable(); }, sendRecovery: unavailable, verifyAddress: unavailable },
         age: { verify: unavailable },
         guardian: { verify: unavailable },
         factors: { SMS: { assertAvailable: unavailable, send: unavailable }, EMAIL: { assertAvailable: unavailable, send: unavailable } }

@@ -1,4 +1,75 @@
-# CineAstra — handoff Prompt 01
+# CineAstra — handoff tarefa 15
+
+Atualização 08/10/2026: **tarefa 15 CONCLUÍDA — staging administrativo seguro de imagens**. 64/64 testes aprovados; OpenAPI válido, 60 operações; auditoria da instalação sem vulnerabilidades reportadas. Nenhuma migration criada/aplicada. [Contrato, arquivos e limites operacionais](backend-image-uploads.md).
+
+- POST `/api/admin/uploads/images`, GET/DELETE `/api/admin/uploads/images/:key`, todos ADMIN + sessão/2FA. Multer com limites, assinatura + decoder Sharp, WebP sem metadados, dimensões limitadas, nomes aleatórios, prévia privada, cleanup em abort/erro, expiração e quota de staging.
+- Criados `models/imageStorage.js`, `services/imageProcessor.js`, `services/imageUploadService.js`, `controllers/imageUploadController.js`, `routes/imageUploadRoutes.js`, gerador OpenAPI e testes de upload; composição/config/middleware/manifests/lock/spec/continuidade atualizados. Frontend preservado.
+- RNF05 backend upload e suporte à prévia cobertos; prévia visual frontend fica pendente. RNF17 controles do upload cobertos; não certifica segurança global. Filesystem/decoder/socket reais testados, repository de identidade simulado explicitamente.
+- Operação local de instância única: `IMAGE_STAGING_DIR` absoluto privado obrigatório em produção; ausência ou multi-instância retorna 503. Staging expira em 24h, expurgo físico sob demanda, quota 200 arquivos. Não é galeria durável nem storage de playback.
+- Próxima tarefa **16 — galerias**, promovendo cópia durável e vínculo V4. Bloqueio SQL da tarefa 14 permanece; esta rodada não repetiu testes MySQL sem ambiente.
+
+## Histórico — tarefa 14
+
+Atualização 08/10/2026: **tarefa 14 implementada; aceite MySQL BLOQUEADO por ambiente ausente**. 59 testes unitários/HTTP aprovados, OpenAPI válido (57 operações, 18 novas), 2 suítes MySQL puladas. Nenhuma migration aplicada. Escopo e comandos: [backend-catalog.md](backend-catalog.md).
+
+- Novos: `backend/{models,services,controllers,routes,validators}/catalog*.js`, `scripts/generateCatalogOpenapi.js`, `tests/catalog.test.js`, `migrations/20261008_03_catalog_genres.sql`, `docs/backend-catalog.md`.
+- Integrados/atualizados: `app.js`, `config/env.js`, `.env.example`, `package.json`, `scripts/migrationPlan.js`, `scripts/validateOpenapi.js`, `docs/openapi.json`, `tests/integration/identity.mysql.test.js`; arquitetura/cobertura/handoff e progresso/decisões/continuidade do kit.
+- Endpoints: CRUD `/api/films` e `/api/genres`; consultas privadas `/api/admin/films` e `/api/admin/genres`; vínculos `/api/films/:id/genres` e leitura administrativa correspondente. ADMIN + 2FA para escrita; público só ATIVO e sem `url_reproducao`.
+- Migration mínima: status de gênero para arquivamento que preserva vínculos; filmes usam status existente. DELETE sempre arquiva. RF45 catálogo coberto isoladamente; RF08 somente metadados/preços, sem compra/playback.
+- Dependência exata: conexão MySQL dev/test não produtiva; `TEST_DB_*`, schema vazio `_test` diferente de `DB_NAME`, `TEST_DB_CONFIRMED_NON_PRODUCTION=true`, `RUN_IDENTITY_MYSQL_TESTS=true`. Cenário SQL do catálogo preparado na suíte de identidade, ainda não executado. Para URLs novas, configurar `CATALOG_MEDIA_HOSTS` com hosts HTTPS aprovados.
+- Próxima tarefa de implementação do kit: **15 (uploads)**, sem iniciar nesta rodada. Tarefas 00–13 do kit não foram retroativamente certificadas; fundação/identidade anteriores são referência dos handoffs históricos abaixo.
+
+## Histórico — Prompt 02
+
+Atualização: **08/10/2026. STATUS: CONCLUÍDO COM PENDÊNCIAS.** Implementação independente de integrações externas concluída e conectada à fundação. **54 testes isolados/HTTP aprovados; 2 testes MySQL pulados por configuração ausente. Nenhuma migration aplicada; não pronto para produção.** O histórico do Prompt 01 abaixo permanece para rastreabilidade, não descreve o estado atual de identidade.
+
+## Entrega atual
+
+- Cadastro CLIENTE com prova externa obrigatória/aceites persistidos; login/sessão revogável/logout/reset; TOTP com enrollment restrito, limite de tentativas, replay, rotação e 2FA obrigatório para ADMIN/SUPERVISOR.
+- Perfil, CRUD de endereços/contatos próprios com principal único, preferências, export paginado e solicitação de exclusão com desativação; vínculos/controles/autorizações parentais e renovação da prova de idade.
+- Administração interna com mudança de acesso/revogação e proteção do último ADMIN; bootstrap controlado via stdin, sem senha fixa. SMS/e-mail 2FA permanecem 503 até integração real de protocolo/destino/entrega.
+- OpenAPI 3.0.3: **34 operações de identidade + 5 de infraestrutura**. DTOs/URLs `/api` preservados conforme diagnóstico, nenhum frontend modificado.
+
+## Arquivos criados e alterados
+
+Novos: `backend/models/identityModel.js`, `services/identityService.js`, `services/profileService.js`, `controllers/identityController.js`, `routes/identityRoutes.js`, `scripts/bootstrapAdmin.js`, `scripts/generateIdentityOpenapi.js`, `migrations/20261008_02_identity_guard.sql`, `tests/identityFixture.js`, `tests/identity.test.js`, `tests/integration/identity.mysql.test.js`, `docs/backend-identity.md`. Fontes integrais de `agents/` copiadas para `docs/CineAstra-prompts-backend.md`, `requisitos-cineastra.txt`, `banco-referencia-cineastra.txt`, `prompt-anterior-cineastra.txt`.
+
+Atualizados: `backend/app.js`, `server.js`, `config/env.js`, `.env.example`, `package.json`, `validators/identityValidators.js`, `providers/identityProviders.js`, `middlewares/rateLimitMiddleware.js`, `models/userAccessModel.js`, `services/accessService.js`, `scripts/migrationPlan.js`, `scripts/validateOpenapi.js`, `docs/openapi.json`, `README.md`; e os três documentos de continuidade. Preservados/reutilizados `identityCrypto.js` e migration `20261008_01_identity.sql` existentes. npm/lockfile preservados, sem dependência nova nesta rodada.
+
+## Endpoints integrados
+
+| Método | Caminho | Escopo |
+| --- | --- | --- |
+| POST | `/api/auth/register`, `/registrar`, `/login`, `/password/forgot`, `/password/reset` | Público, CAPTCHA/limites; nenhum perfil autoatribuído |
+| POST | `/api/auth/logout` | Própria sessão |
+| POST | `/api/auth/2fa/enroll`, `/verify`, `/disable` | Desafio restrito ou reautenticação conforme operação; disable só fator opcional |
+| GET/PATCH/DELETE | `/api/users/me` | Próprio; DELETE registra solicitação 202, desativa e revoga |
+| POST | `/api/users/me/age-verification`, `/export` | Próprio, provider de idade/reauth conforme fluxo |
+| GET/POST | `/api/users/me/addresses`, `/contacts` | Próprio; listas paginadas |
+| GET/PATCH/DELETE | `/api/users/me/addresses/:id`, `/contacts/:id` | Dono do recurso, 404 para recurso alheio |
+| GET/PATCH | `/api/users/me/preferences` | Próprio |
+| GET/PATCH | `/api/users/me/children/:id/controls` | Responsável legal comprovado e menor elegível |
+| POST/GET | `/api/users/me/children/:id/authorizations` (POST), `/:authorizationId` (GET) | Responsável vinculado; finalidade/operação/prazo |
+| POST/GET/PATCH | `/api/admin/users` (POST), `/:id` (GET), `/:id/access` (PATCH) | ADMIN + 2FA, sem último ADMIN removido nem reativação cega |
+| GET | `/api/admin/privacy-requests/:id` | ADMIN + 2FA, acompanhamento persistido |
+
+## Banco, regras e testes
+
+Migration de identidade já existente: 5 ALTERs + 8 tabelas, aproveitada integralmente. Nova migration cria `identity_admin_guard` e linha estável para bootstrap/alteração administrativa. Plano offline **88 statements**, alvo **59 tabelas incluindo ledger**. Revisar duplicatas/segredos legados antes de upgrade; nenhum SQL aplicado.
+
+RF01–07, RN02/RN24 e RNF07/09/13/15–19/21/23 têm entregas desta etapa, com limites por provider/infra/privacidade explícitos. RF06 meios de pagamento/RNF22 ficam no Prompt09; RF07 visual/RNF14 frontend não alterados; não afirmar conformidade integral. Matriz e evidências em [backend-coverage.md](backend-coverage.md).
+
+`npm test`: **54/54**, `npm run validate:openapi`: aprovado (39 operações), `npm run test:integration`: **2 skips**, auditoria npm: **0 vulnerabilidades reportadas**, plano offline: **88**, sintaxe: **47 JS**, `git diff --check`: sem erro. Banco/providers simulados apenas nos testes identificados; locks reais ainda sem evidência. Runner exigiu execução fora do sandbox por `spawn EPERM`.
+
+## Próximo checkpoint e bloqueios exatos
+
+Consultar [backend-identity.md](backend-identity.md) para contratos, configuração, retenção, ordem de locks, comandos e limites. Falta conexão dev/test separada de produção para migrations/SQL/concorrência; faltam CAPTCHA, e-mail, verificação de idade/responsável e documentos/base legal aprovados. SMS/EMAIL exigem ainda integração de desafio/destino/entrega real. Anonimização final/limpeza/retenção, mudança de responsável, recuperação de fator perdido e reativação exigem política/procedimento aprovado. Não marcar solicitações de exclusão como concluídas.
+
+Após resolver esses itens, executar validação MySQL descrita no README. Próximo módulo da sequência é **Prompt03**, a solicitar em outra rodada; consumir auth/session/requireAge atuais, sem reimplementar identidade. Nenhum catálogo/checkout/pagamento implementado nesta rodada.
+
+---
+
+## Histórico — Prompt 01
 
 Atualização: **08/10/2026** (implementação iniciada em 06/10). **STATUS: CONCLUÍDO COM PENDÊNCIAS.** Todo trabalho independente de serviço/configuração externa desta etapa foi integrado e validado. Os critérios que exigem MySQL real ainda não foram satisfeitos; **não pronto para produção**. Não implementados módulos de negócio, login ou fluxo de venda. Nenhum banco foi alterado.
 
