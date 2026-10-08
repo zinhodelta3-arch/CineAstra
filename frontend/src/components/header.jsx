@@ -142,6 +142,20 @@ export function Header() {
           <div className="flex shrink-0 items-center gap-3 border-l-2 border-dashed border-border/70 pl-4 pr-5 sm:pl-6 sm:pr-6">
             <Barcode />
             <div className="flex items-center gap-2">
+              <div className="hidden items-center gap-2 sm:flex">
+                <Link
+                  href="/login"
+                  className="rounded-md border border-border/70 px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-muted/50"
+                >
+                  Entrar
+                </Link>
+                <Link
+                  href="/cadastro"
+                  className="rounded-md bg-primary px-3.5 py-2 text-xs font-bold text-primary-foreground shadow-sm transition-all hover:brightness-110"
+                >
+                  Criar conta
+                </Link>
+              </div>
               <AppearanceSelector />
               <MobileNavigation />
             </div>
