@@ -1,0 +1,478 @@
+.page {
+  position: relative;
+  min-height: calc(100vh - 81px);
+  overflow: hidden;
+  padding: 42px 20px 80px;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.ambient {
+  position: absolute;
+  top: 120px;
+  left: 50%;
+  width: 620px;
+  height: 620px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--primary) 11%, transparent), transparent 68%);
+  pointer-events: none;
+}
+
+.hero,
+.ticketBoard,
+.contactCard {
+  position: relative;
+  z-index: 1;
+  width: min(1120px, 100%);
+  margin-inline: auto;
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.backLink:hover { color: var(--primary); }
+
+.hero {
+  padding: 4px 10px 38px;
+  text-align: center;
+}
+
+.heroLogo {
+  width: 170px;
+  height: 54px;
+  margin: 26px auto 18px;
+}
+
+.heroLogo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.eyebrow,
+.boardKicker {
+  display: block;
+  margin: 0 0 7px;
+  color: var(--primary);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+
+.hero h1 {
+  margin: 0;
+  font-family: var(--font-geist-sans), sans-serif;
+  font-size: clamp(40px, 6vw, 70px);
+  line-height: .9;
+  letter-spacing: -.06em;
+  font-weight: 900;
+}
+
+.hero h1 em {
+  color: var(--primary);
+  font-style: normal;
+}
+
+.heroText {
+  max-width: 590px;
+  margin: 18px auto 27px;
+  color: var(--muted-foreground);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.searchBox {
+  width: min(690px, 100%);
+  height: 58px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 auto;
+  padding: 0 17px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--card);
+  box-shadow: 0 15px 45px color-mix(in srgb, var(--foreground) 9%, transparent);
+  color: var(--muted-foreground);
+}
+
+.searchBox:focus-within {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--ring) 11%, transparent);
+}
+
+.searchBox input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--foreground);
+  font: inherit;
+  font-size: 13px;
+}
+
+.searchBox input::placeholder {
+  color: color-mix(in srgb, var(--muted-foreground) 70%, transparent);
+}
+
+.searchBox button {
+  display: grid;
+  place-items: center;
+  width: 27px;
+  height: 27px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--muted);
+  color: var(--muted-foreground);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.ticketBoard {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: 0 25px 75px color-mix(in srgb, var(--foreground) 10%, transparent);
+}
+
+.ticketBoard::before,
+.ticketBoard::after {
+  content: "";
+  position: absolute;
+  top: 180px;
+  width: 24px;
+  height: 24px;
+  transform: translateY(-50%);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--background);
+  z-index: 2;
+}
+
+.ticketBoard::before {
+  left: -13px;
+  clip-path: inset(0 0 0 50%);
+}
+
+.ticketBoard::after {
+  right: -13px;
+  clip-path: inset(0 50% 0 0);
+}
+
+.boardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 30px 34px 24px;
+  border-bottom: 1px dashed var(--border);
+}
+
+.boardHeader h2,
+.contactCard h2 {
+  margin: 0;
+  font-size: clamp(24px, 3vw, 32px);
+  line-height: 1;
+  letter-spacing: -.04em;
+}
+
+.ticketStamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 11px;
+  border: 1px dashed color-mix(in srgb, var(--primary) 55%, var(--border));
+  border-radius: 6px;
+  color: var(--primary);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .13em;
+  transform: rotate(-2deg);
+}
+
+.categoryScroller {
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+  padding: 18px 34px;
+  border-bottom: 1px solid var(--border);
+  scrollbar-width: thin;
+}
+
+.categoryScroller button {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--background);
+  color: var(--muted-foreground);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 750;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.categoryScroller button:hover {
+  border-color: color-mix(in srgb, var(--primary) 50%, var(--border));
+  color: var(--primary);
+}
+
+.categoryScroller .categoryActive {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.faqGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+}
+
+.category {
+  min-width: 0;
+  padding: 30px 34px 34px;
+}
+
+.category:nth-child(odd) {
+  border-right: 1px dashed var(--border);
+}
+
+.category:nth-child(n + 3) {
+  border-top: 1px dashed var(--border);
+}
+
+.categoryHeading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.categoryIcon {
+  display: grid;
+  place-items: center;
+  width: 39px;
+  height: 39px;
+  flex: 0 0 auto;
+  border-radius: 9px 4px 9px 4px;
+  background: color-mix(in srgb, var(--primary) 11%, var(--background));
+  color: var(--primary);
+}
+
+.categoryHeading > div > span {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--muted-foreground);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+.categoryHeading h3 {
+  margin: 0;
+  font-size: 17px;
+  letter-spacing: -.02em;
+}
+
+.questions {
+  border-top: 1px solid var(--border);
+}
+
+.faqItem {
+  border-bottom: 1px solid var(--border);
+}
+
+.question {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 0;
+  border: 0;
+  background: transparent;
+  color: var(--foreground);
+  text-align: left;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.45;
+  cursor: pointer;
+}
+
+.question:hover { color: var(--primary); }
+
+.chevron {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--muted-foreground);
+  transition: transform 180ms ease, background 180ms ease, color 180ms ease;
+}
+
+.faqOpen .chevron {
+  transform: rotate(180deg);
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.answer {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 200ms ease;
+}
+
+.answer p {
+  min-height: 0;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.faqOpen .answer {
+  grid-template-rows: 1fr;
+}
+
+.faqOpen .answer p {
+  padding: 0 40px 17px 0;
+}
+
+.empty {
+  display: grid;
+  justify-items: center;
+  padding: 70px 25px;
+  text-align: center;
+  color: var(--muted-foreground);
+}
+
+.empty h3 {
+  margin: 14px 0 5px;
+  color: var(--foreground);
+  font-size: 18px;
+}
+
+.empty p {
+  margin: 0 0 17px;
+  font-size: 12px;
+}
+
+.empty button {
+  border: 0;
+  background: transparent;
+  color: var(--primary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.contactCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 30px;
+  margin-top: 28px;
+  padding: 27px 32px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--secondary);
+  color: var(--secondary-foreground);
+}
+
+.contactCard .boardKicker { color: var(--accent); }
+
+.contactCard h2 {
+  color: var(--secondary-foreground);
+}
+
+.contactCard p {
+  max-width: 600px;
+  margin: 9px 0 0;
+  color: color-mix(in srgb, var(--secondary-foreground) 72%, transparent);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.contactTicket {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  min-width: 150px;
+  padding-left: 30px;
+  border-left: 1px dashed color-mix(in srgb, var(--secondary-foreground) 40%, transparent);
+}
+
+.contactTicket > span:first-child {
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .2em;
+}
+
+.contactTicket strong {
+  font-size: 17px;
+  letter-spacing: .08em;
+}
+
+.contactTicket svg {
+  color: var(--accent);
+}
+
+.contactLine {
+  width: 45px;
+  height: 2px;
+  background: var(--accent);
+}
+
+@media (max-width: 850px) {
+  .faqGrid { grid-template-columns: 1fr; }
+  .category:nth-child(odd) { border-right: 0; }
+  .category:nth-child(n + 2) { border-top: 1px dashed var(--border); }
+  .contactCard { align-items: flex-start; }
+}
+
+@media (max-width: 600px) {
+  .page { padding: 30px 12px 60px; }
+  .hero { padding-inline: 4px; }
+  .hero h1 { font-size: clamp(38px, 13vw, 58px); }
+  .heroText { font-size: 13px; }
+  .searchBox { height: 53px; }
+  .boardHeader { padding: 24px 20px 20px; }
+  .categoryScroller { padding: 14px 20px; }
+  .category { padding: 25px 20px 28px; }
+  .ticketStamp { display: none; }
+  .contactCard { display: grid; padding: 25px 22px; }
+  .contactTicket {
+    width: 100%;
+    min-width: 0;
+    padding: 17px 0 0;
+    border-top: 1px dashed color-mix(in srgb, var(--secondary-foreground) 40%, transparent);
+    border-left: 0;
+  }
+}
