@@ -1,0 +1,62 @@
+/* Importar fontes pelo layout/next/font é preferível em produção.
+   Este fallback preserva a tipografia visual do código de referência. */
+@import url("https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap");
+
+.ca-profile,
+.ca-profile-dialog {
+  font-family: var(--font-sans, "Manrope", sans-serif);
+}
+
+.ca-profile .ca-display,
+.ca-profile-dialog .ca-display {
+  font-family: "Big Shoulders Display", "Arial Narrow", Impact, sans-serif;
+  letter-spacing: 0.015em;
+}
+
+.ca-profile .ca-perf,
+.ca-profile-dialog .ca-perf {
+  height: 7px;
+  border-radius: 2px;
+  background: repeating-linear-gradient(90deg, var(--primary) 0 9px, transparent 9px 21px);
+  opacity: 0.45;
+}
+
+.ca-profile .ca-grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.ca-profile .ca-profile-cover {
+  background: radial-gradient(ellipse at 20% 0%, color-mix(in oklch, var(--primary) 22%, transparent), transparent 80%), var(--secondary);
+}
+
+.ca-profile .ca-ticket,
+.ca-profile-dialog .ca-ticket {
+  --notch: 64%;
+  -webkit-mask: radial-gradient(circle 6px at 0 var(--notch), transparent 97%, black) left / 51% 100% no-repeat,
+    radial-gradient(circle 6px at 100% var(--notch), transparent 97%, black) right / 51% 100% no-repeat;
+  mask: radial-gradient(circle 6px at 0 var(--notch), transparent 97%, black) left / 51% 100% no-repeat,
+    radial-gradient(circle 6px at 100% var(--notch), transparent 97%, black) right / 51% 100% no-repeat;
+}
+
+.ca-profile :is(a, button):focus-visible {
+  outline: 2px solid var(--ring, var(--primary));
+  outline-offset: 3px;
+}
+
+.ca-profile option,
+.ca-profile-dialog option {
+  background: var(--card);
+  color: var(--card-foreground);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ca-profile *, .ca-profile-dialog * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

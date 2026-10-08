@@ -110,10 +110,18 @@ export function MobileNavigation() {
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>
-        <Button variant="ghost" size="icon" className="md:hidden" aria-label="Abrir menu de navegação">
-          <Menu className="size-5" aria-hidden="true" />
-        </Button>
+      <SheetTrigger
+        render={
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="md:hidden"
+            aria-label="Abrir menu de navegação"
+          />
+        }
+      >
+        <Menu className="size-5" aria-hidden="true" />
       </SheetTrigger>
 
       <SheetContent side="right" className="w-80 gap-0 p-4">

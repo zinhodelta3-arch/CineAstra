@@ -9,11 +9,8 @@ import {
 import "./globals.css";
 import { Header } from "@/components/header";
 import { ThemeProvider } from "@/components/providers/theme-provider";
-import {
-  APPEARANCE_STORAGE_KEY,
-  appearanceValues,
-  DEFAULT_APPEARANCE,
-} from "@/lib/themes";
+import AppearanceInitializer from "@/components/providers/appearance-initializer";
+import { DEFAULT_APPEARANCE } from "@/lib/themes";
 import Footer from "@/components/Footer";
 
 const geistSans = Geist({
@@ -47,17 +44,6 @@ const dmSans = DM_Sans({
   subsets: ["latin"],
 });
 
-const appearanceScript = `(() => {
-  const fallback = ${JSON.stringify(DEFAULT_APPEARANCE)};
-  try {
-    const saved = localStorage.getItem(${JSON.stringify(APPEARANCE_STORAGE_KEY)});
-    const allowed = ${JSON.stringify(appearanceValues)};
-    document.documentElement.dataset.theme = allowed.includes(saved) ? saved : fallback;
-  } catch {
-    document.documentElement.dataset.theme = fallback;
-  }
-})();`;
-
 export const metadata = {
   title: "CineAstra",
   description: "Sua experiência de cinema começa aqui.",
@@ -71,14 +57,12 @@ export default function RootLayout({ children }) {
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} ${plusJakartaSans.variable} ${lora.variable} ${ibmPlexMono.variable} ${dmSans.variable} h-full antialiased`}
     >
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: appearanceScript }} />
-      </head>
       <body className="flex min-h-full flex-col">
+        <AppearanceInitializer />
         <ThemeProvider>
           <Header />
           {children}
-          
+          <Footer />
         </ThemeProvider>
       </body>
     </html>

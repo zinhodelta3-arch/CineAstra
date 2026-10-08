@@ -1,0 +1,148 @@
+@font-face {
+  font-family: "CineAstra Display";
+  src: url("/fonts/cinema/display.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 700 900;
+  font-display: swap;
+}
+@font-face {
+  font-family: "CineAstra Title";
+  src: url("/fonts/cinema/title.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 500 700;
+  font-display: swap;
+}
+
+/* Interface herdada de TweakCN. Sem substituir a paleta global. */
+.root {
+  position: relative;
+  isolation: isolate;
+  font-family: var(--theme-font-sans, var(--font-sans, "Manrope", sans-serif));
+}
+.root::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: .04;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.content { position: relative; }
+.display {
+  font-family: "CineAstra Display", "Big Shoulders Display", "Arial Narrow", Impact, sans-serif;
+  letter-spacing: .01em;
+}
+.titleFont {
+  font-family: "CineAstra Title", "Oswald", "Arial Narrow", Impact, sans-serif;
+  letter-spacing: .01em;
+}
+
+/* Perfurações do código de referência: 12px a cada 26px. */
+.perforation {
+  height: 10px;
+  background: repeating-linear-gradient(90deg, var(--primary) 0 12px, transparent 12px 26px);
+  opacity: .6;
+}
+.verticalPerf {
+  flex-shrink: 0;
+  width: 14px;
+  border-radius: 2px;
+  background: repeating-linear-gradient(180deg, var(--border) 0 12px, transparent 12px 26px);
+  opacity: .8;
+}
+
+/* Película sem texto; todas as linhas acompanham primary. */
+.filmStrip {
+  position: relative;
+  height: 32px;
+  overflow: hidden;
+  border-block: 2px solid var(--primary);
+  background: repeating-linear-gradient(90deg, transparent 0 61px, color-mix(in oklab, var(--primary) 60%, transparent) 61px 63px);
+  opacity: .8;
+}
+.filmStrip::before,
+.filmStrip::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  height: 5px;
+  border-block: 1px solid var(--primary);
+  background: repeating-linear-gradient(90deg, var(--primary) 0 3px, var(--background) 3px 7px);
+}
+.filmStrip::before { top: 0; }
+.filmStrip::after { bottom: 0; }
+
+/* Cartaz como ingresso, com os recortes do ticket-v original. */
+.posterTicket {
+  --n: 50%;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--card-foreground);
+  -webkit-mask: radial-gradient(circle 9px at var(--n) 0, #0000 97%, #000) top/100% 51% no-repeat, radial-gradient(circle 9px at var(--n) 100%, #0000 97%, #000) bottom/100% 51% no-repeat;
+  mask: radial-gradient(circle 9px at var(--n) 0, #0000 97%, #000) top/100% 51% no-repeat, radial-gradient(circle 9px at var(--n) 100%, #0000 97%, #000) bottom/100% 51% no-repeat;
+  transition: transform .3s ease, border-color .3s ease;
+}
+.posterTicket:hover { transform: translateY(-4px); border-color: var(--primary); }
+.posterTicket:focus-visible { border-color: var(--primary); box-shadow: inset 0 0 0 2px var(--primary); }
+.posterScrim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(0deg, color-mix(in oklab, var(--background) 65%, transparent) 0%, color-mix(in oklab, var(--background) 22%, transparent) 20%, transparent 45%);
+}
+.tear { border-top: 2px dashed var(--border); }
+.barcode { display: flex; align-items: flex-end; gap: 2px; height: 22px; opacity: .6; flex: 1; min-width: 0; max-width: 130px; overflow: hidden; }
+.barcode span { flex-shrink: 0; background: var(--foreground); }
+
+.sectionDivider { position: relative; }
+.sectionDivider::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  inset-inline: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--primary) 45%, transparent), transparent);
+}
+
+.tab { position: relative; background: transparent; box-shadow: none; }
+.tab::after {
+  content: "";
+  position: absolute;
+  inset-inline: 15px;
+  bottom: -1px;
+  height: 2px;
+  background: transparent;
+  opacity: 1;
+}
+.tab[data-active]::after,
+.tab[data-state="active"]::after,
+.tab[aria-selected="true"]::after { background: var(--primary); }
+.tab[aria-selected="true"] { color: var(--primary); }
+
+/* Classificação indicativa independente da paleta da interface. */
+.ageRating {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 24px;
+  padding-inline: 4px;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+}
+.ageL { background: #178346; }
+.age10 { background: #2275b9; }
+.age12 { background: #f5c028; color: #171717; }
+.age14 { background: #df7927; }
+.age16 { background: #bd3338; }
+.age18 { background: #181818; border: 1px solid var(--border); }
+@media (prefers-reduced-motion: reduce) {
+  .posterTicket { transition: none; }
+  .posterTicket:hover { transform: none; }
+}
