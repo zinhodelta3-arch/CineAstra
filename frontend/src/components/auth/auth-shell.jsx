@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowLeft, Check, Eye, EyeOff, Film, LockKeyhole, Mail, Phone, UserRound } from "lucide-react";
+import { ArrowLeft, Check, Eye, EyeOff, LockKeyhole, Mail, Phone, UserRound } from "lucide-react";
 import styles from "./auth-shell.module.css";
 
 function Field({ label, icon: Icon, type = "text", value, onChange, placeholder, autoComplete, required = true, minLength, maxLength }) {
@@ -57,8 +57,8 @@ function AuthCard({ eyebrow, title, description, children, footer }) {
             Voltar para a Home
           </Link>
 
-          <div className={styles.brandMark} aria-hidden="true">
-            <Film size={21} />
+          <div className={styles.brandLogo}>
+            <img src="/CineAstra.png" alt="CineAstra" />
           </div>
 
           <p className={styles.eyebrow}>{eyebrow}</p>
