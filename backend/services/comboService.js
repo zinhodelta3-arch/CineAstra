@@ -12,7 +12,7 @@ export function createComboService({ model, identity }) {
         if (local.status !== 'ATIVO') throw conflict('Local indisponível');
         const ids = items.map(i => i.inputId);
         const rows = await model.inputs(ids, c, true);
-        if (rows.length !== ids.length || rows.some(i => idString(i.id_local) !== idString(localId) || i.status !== 'DISPONIVEL' || i.fornecedor_status !== 'ATIVO' || i.vinculo_status !== 'ATIVO')) throw conflict('Composição exige insumos disponíveis do mesmo local e fornecedor autorizado');
+        if (rows.length !== ids.length || rows.some(i => idString(i.id_local) !== idString(localId) || i.status !== 'DISPONIVEL' || i.fornecedor_status !== 'ATIVO' || i.usuario_status !== 'ATIVO' || i.tipo_usuario !== 'FORNECEDOR' || i.vinculo_status !== 'ATIVO')) throw conflict('Composição exige insumos disponíveis do mesmo local e fornecedor autorizado');
     }
     async function detail(id, c) { const combo = found(await model.combo(id, c)); return dto(combo, await model.items(id, c)); }
     return {

@@ -1,5 +1,46 @@
 # Continuidade
 
+- Última tarefa: 29 — métodos tokenizados e provider (09/10/2026). Cinco rotas próprias integradas, intenção idempotente interna; aceite BLOQUEADO sem gateway real e MySQL `_test` isolado.
+- Migration `20261009_13_payment_methods.sql` no manifest, não aplicada. Auditar donos com múltiplos principais antes do ALTER; legados ficam sem token e não são cobrados. Validar DDL, FK, UNIQUE, principal concorrente e rollback no `_test`.
+- Provider injetável `tokenize/create/consult/cancel/refund/verifyWebhook`, padrão 503. Nenhum pagamento aprovado ou estorno simulado.
+- `npm test` 122/122, OpenAPI 204 operações; duas suítes MySQL opt-in puladas. Próximo passo: configurar gateway real com tokenização hospedada e validar migration; tarefa 30 implementa despacho, webhook e conciliação.
+
+- Última tarefa: 28 — custos, parâmetros, promoções e cotação (09/10/2026). Backend integrado; aceite MySQL BLOQUEADO sem `TEST_DB_*`/schema `_test` isolado.
+- Dezessete operações de precificação: cotação pública redigida, cotação ADMIN com alertas de margem, custos, publicação de preço, parâmetros, promoções, cupons e benefícios de plano.
+- Migration `20261009_12_pricing.sql` no manifest, não aplicada. Custos legados NULL; auditar histórico de cupons antes do backfill conservador. `commit`/`settleCoupon` internos aguardam checkout/pagamento.
+- `pricing.test.js` cobre C100→160→120, meia, combo, cupom concorrente e validação HTTP. Prova de meia, cota, snapshot ligado aos itens do pedido e rateio dependem das tarefas 32–39.
+- `npm test` 119/119; OpenAPI 199 operações; duas suítes MySQL opt-in puladas por falta de banco isolado.
+- Próximo passo: validar migration/locks no MySQL `_test`; depois tarefa 29.
+
+- Última tarefa: 27 — solicitações e logística (09/10/2026). Backend integrado; aceite MySQL BLOQUEADO por ausência de `TEST_DB_*` e schema `_test` isolado.
+- Treze operações em `/api/stock`, `/api/stock/requests` e `/api/logistics`: autorização por fornecedor/equipe/local, envio, trânsito, recebimento único e devolução de equipamento após sessão encerrada.
+- Migration `20261009_11_supply_logistics.sql` no manifest, não aplicada. Auditar logísticas legadas com `id_solicitacao` duplicado ou sem identidade/quantidade antes do ALTER.
+- `supply.test.js` cobre local errado, fornecedor alheio, recebimento/devolução repetidos e `a_chegar`. `npm test` 111/111; OpenAPI 182 operações; duas suítes MySQL puladas. ETA/distância real de RN11 e uso efetivo de equipamento não têm dados/provider.
+- Próximo passo: validar FK/CHECK/UNIQUE, locks e rollback em MySQL `_test` isolado; depois tarefa 28.
+
+- Última tarefa: 26 — movimentos e reserva de estoque (09/10/2026). Implementação integrada; aceite MySQL BLOQUEADO por ausência de `TEST_DB_*`/schema `_test` isolado.
+- Cinco operações em `/api/inventory` para saldo, movimentos e alertas. Saldo físico/reservado separado; movimento único com sinal por tipo, histórico atômico; fornecedor só itens próprios.
+- Serviço interno reserva todos componentes de combo e transiciona CONSUMIR/LIBERAR/COMPENSAR na conexão do checkout. Migration `20261009_10_inventory_reservations.sql` preparada, não aplicada.
+- `npm test` 108/108; OpenAPI 169 operações; duas suítes MySQL puladas. Contrato na raiz: `docs/backend-inventory.md`. RF43/RN15 parciais até solicitação/logística e interface.
+- Próximo passo: validar constraints/locks/rollback no MySQL `_test`; depois tarefa 27. Checkout futuro deve usar a mesma transação.
+
+## Histórico — tarefa 25
+
+- Última tarefa: 25 — galerias de insumos e combos (09/10/2026). Implementação integrada; aceite MySQL BLOQUEADO por ausência de `TEST_DB_*`/schema `_test` isolado.
+- 14 operações de galeria e 3 de staging FORNECEDOR. PRINCIPAL única sob lock do pai, imagens alternativas para apresentação, propriedade por conta e compensação/journal reutilizados.
+- Schema V4 já contém `insumos_imagens`/`combos_imagens`; nenhuma migration nova ou aplicada. Staging antigo sem sidecar precisa ser reenviado. `npm test` 104/104; OpenAPI 164 operações; duas suítes MySQL puladas.
+- Contrato na raiz: `docs/backend-commerce-galleries.md`. Próximo passo: validar UNIQUE/locks/conciliação no MySQL `_test` e prosseguir com tarefa 26.
+
+## Histórico — tarefa 24
+
+- Última tarefa: 24 — combos e composição (09/10/2026). CRUD e catálogo público integrados; aceite MySQL BLOQUEADO por ausência de `TEST_DB_*`/schema `_test` isolado.
+- Sete operações em `/api/combos` e `/api/admin/combos`; composição exige quantidade positiva, insumos únicos e mesmo local ativo. Referência em pedido congela edição/composição; DELETE arquiva.
+- Migration `20261008_09_combo_location.sql` preparada, não aplicada. Combos legados sem local ficam ocultos da consulta pública até saneamento. `npm test` 101/101; OpenAPI 147 operações; duas suítes MySQL puladas.
+- RF12/RN10 parciais: compra/consumo no fluxo posterior; preço/desconto na tarefa 28. Contrato na raiz: `docs/backend-combos.md`.
+- Próximo passo: validar migration/FK/referências no MySQL `_test` vazio; depois tarefa 25.
+
+## Histórico — tarefa 23
+
 - Última tarefa: 23 — insumos e equipamentos (08/10/2026). Cadastros integrados; aceite MySQL BLOQUEADO por ausência de `TEST_DB_*`/schema `_test` isolado.
 - 14 operações em `/api/inputs`, `/api/equipment` e vínculos fornecedor-local. FORNECEDOR opera próprios itens em locais autorizados; saldo inicia em zero, sem PATCH genérico; patrimônio normalizado UNIQUE.
 - Migration `20261008_08_supplier_products.sql` preparada, não aplicada. Auditar patrimônios legados duplicados antes do ALTER. `npm test` 98/98; OpenAPI 140 operações; duas suítes MySQL puladas.

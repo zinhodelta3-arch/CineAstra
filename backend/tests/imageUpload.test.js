@@ -86,6 +86,20 @@ test('upload HTTP integrado: ADMIN/TOTP, prévia privada, nome aleatório, remo�
     await request(f.app).post(endpoint).set('Authorization', bearer).attach('image', input, 'a.png').expect(401);
 });
 
+test('staging FORNECEDOR pertence à conta que enviou a imagem', async t => {
+    const root = await directory(t), f = await identityFixture({ env: { IMAGE_STAGING_DIR: root } }); t.after(() => f.close());
+    const owner = await f.addUser('FORNECEDOR'), other = await f.addUser('FORNECEDOR');
+    const ownAuth = await f.login(owner), otherAuth = await f.login(other);
+    const own = `Bearer ${ownAuth.accessToken}`, foreign = `Bearer ${otherAuth.accessToken}`;
+    const created = await request(f.app).post('/api/uploads/images').set('Authorization', own).attach('image', await png(), 'input.png').expect(201);
+    assert.ok(created.body.data.previewUrl.startsWith('/api/uploads/images/'));
+    await request(f.app).get(created.body.data.previewUrl).set('Authorization', foreign).expect(403);
+    await request(f.app).delete(created.body.data.previewUrl).set('Authorization', foreign).expect(403);
+    await request(f.app).get(created.body.data.previewUrl).set('Authorization', own).expect(200);
+    await request(f.app).delete(created.body.data.previewUrl).set('Authorization', own).expect(204);
+    assert.deepEqual(await readdir(root), []);
+});
+
 test('multipart: forjado, tamanho, partes, campo indevido e formato quebrado não persistem', async t => {
     const f = await fixture(t), input = await png();
     await request(f.app).post(endpoint).attach('image', Buffer.from('fake'), { filename: 'fake.png', contentType: 'image/png' }).expect(415);

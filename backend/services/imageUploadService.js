@@ -15,11 +15,11 @@ export function createImageUploadService({ storage, authorize, processor = norma
             // Revalidar sessão após o trabalho de CPU, antes de persistir. Nenhum I/O de imagem dentro do lock SQL.
             await authorize(context);
             checkUploadSignal(context.signal);
-            const saved = await storage.put(image, context.signal);
-            try { checkUploadSignal(context.signal); } catch (error) { await storage.remove(saved.key); throw error; }
+            const saved = await storage.put(image, context.signal, context.actor?.id);
+            try { checkUploadSignal(context.signal); } catch (error) { await storage.remove(saved.key, context.actor?.id); throw error; }
             return { ...saved, width: image.width, height: image.height, bytes: image.bytes, contentType: image.contentType, previewUrl: `/api/admin/uploads/images/${saved.key}` };
         },
-        read: key => storage.read(key),
-        remove: key => storage.remove(key)
+        read: (key, ownerId) => storage.read(key, ownerId),
+        remove: (key, ownerId) => storage.remove(key, ownerId)
     };
 }

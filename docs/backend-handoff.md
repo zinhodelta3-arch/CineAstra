@@ -249,3 +249,27 @@ Fornecedores integrados em 6 operações administrativas/próprias; `npm test` 9
 ## Checkpoint tarefa 23 — 08/10/2026
 
 Insumos/equipamentos integrados em 14 operações de produto e vínculo fornecedor-local. `npm test` 98/98; OpenAPI 140 operações válida; MySQL opt-in pulou por ausência de `TEST_DB_*` e schema `_test` vazio. Migration `20261008_08_supplier_products.sql` preparada, não aplicada. Antes da aplicação, auditar patrimônios duplicados após trim/uppercase e validar FK/UNIQUE no banco de teste. Saldo só pode mudar no futuro módulo de movimentos; preço não representa custo. RF25/RF26 permanecem parciais. Ver [backend-products.md](backend-products.md). Próxima tarefa: 24.
+
+## Checkpoint tarefa 24 — 09/10/2026
+
+Combos integrados em 7 operações públicas/administrativas. `npm test` 101/101; OpenAPI 147 operações válida; duas suítes MySQL opt-in puladas por ausência de `TEST_DB_*` e schema `_test` vazio. Migration `20261008_09_combo_location.sql` preparada, não aplicada. Antes do ALTER, inspecionar combos legados sem local e decidir saneamento; sem isso ficam preservados mas ocultos do catálogo público. Validar FK, composição e bloqueio por `itens_pedido` no banco isolado. RF12 e RN10 permanecem parciais até compra/consumo e serviço de preço/desconto. Ver [backend-combos.md](backend-combos.md). Próxima tarefa: 25.
+
+## Checkpoint tarefa 25 — 09/10/2026
+
+Galerias de insumos/combos integradas em 14 operações, mais 3 operações de staging FORNECEDOR. `npm test` 104/104 e OpenAPI 164 operações passaram; duas suítes MySQL opt-in foram puladas sem `TEST_DB_*`/schema `_test` vazio. Nenhuma migration nova: tabelas V4 já previstas no manifest, mas sua aplicação não foi verificada. Cenário SQL de UNIQUE/principal concorrente/propriedade está preparado. Staging anterior sem sidecar de proprietário deve ser reenviado. Ver [backend-commerce-galleries.md](backend-commerce-galleries.md). Próxima tarefa: 26.
+
+## Checkpoint tarefa 26 — 09/10/2026
+
+Cinco operações de saldo/movimentos/alertas e API interna de reserva por pedido integradas. `npm test` 108/108; OpenAPI 169 operações válida; duas suítes MySQL opt-in puladas sem `TEST_DB_*`/schema `_test` vazio. Migration `20261009_10_inventory_reservations.sql` preparada, não aplicada. Antes do aceite, validar CHECK/FK/UNIQUE, último item concorrente e rollback parcial em MySQL isolado; conferir histórico e migração de dados legados. Checkout real deve usar a mesma conexão/transação para criar pedido, reservar, consumir ou compensar. RF43/RN15 permanecem parciais. Ver [backend-inventory.md](backend-inventory.md). Próxima tarefa: 27.
+
+## Checkpoint tarefa 27 — 09/10/2026
+
+Treze operações de estoque local, solicitações e logística integradas. `supply.test.js` cobre item/local, fornecedor, recebimento e devolução repetidos; `npm test` 111/111 e OpenAPI 182 operações válidas. Duas suítes MySQL opt-in foram puladas. Migration `20261009_11_supply_logistics.sql` está no manifest e não foi aplicada. Antes do ALTER, auditar logísticas legadas com solicitação duplicada ou sem item/quantidade. Falta `TEST_DB_*`/schema `_test` isolado para verificar FK, CHECK, UNIQUE, concorrência e rollback. ETA de RN11 depende de dados reais de distância; uso efetivo de equipamentos não está modelado. Ver [backend-supply-logistics.md](backend-supply-logistics.md). Próxima tarefa: 28 após o aceite SQL.
+
+## Checkpoint tarefa 28 — 09/10/2026
+
+Precificação integrada em 17 operações de cotação pública/ADMIN, custos, publicação, parâmetros, promoções, benefícios de plano e cupons. `pricing.test.js` cobre dinheiro exato, C100→160→120, meia, combo, acesso e limite concorrente de cupom. `npm test` 119/119 e OpenAPI 199 operações válidas; duas suítes MySQL opt-in puladas. Migration `20261009_12_pricing.sql` preparada no manifest e não aplicada. Auditar cupons e pedidos legados antes do backfill conservador; custos NULL exigem cadastro real. Sem `TEST_DB_*`/schema `_test` isolado, falta validar CHECK/FK, lock de cupom e snapshot no MySQL. Checkout deve chamar `commit`/`settleCoupon` na mesma transação e comprovar meia; não se declara pagamento ou direito validado. Ver [backend-pricing.md](backend-pricing.md). Próxima tarefa: 29.
+
+## Checkpoint tarefa 29 — 09/10/2026
+
+Cinco operações de método próprio tokenizado integradas. Provider injetável com `tokenize/create/consult/cancel/refund/verifyWebhook`; padrão 503, sem gateway real. `prepare` interno verifica obrigação pedido XOR cobrança, pagador, método e chave idempotente persistente antes de despacho externo. `paymentMethod.test.js` cobre IDOR, provider ausente, rejeição de PAN/CVV e chave repetida. `npm test` 122/122; OpenAPI 204 operações; duas suítes MySQL opt-in puladas. Migration `20261009_13_payment_methods.sql` no manifest, não aplicada; auditar múltiplos métodos principais legados antes do ALTER. Aceite bloqueado por ausência de gateway real e MySQL `_test`; webhook/conciliação ficam na tarefa 30. Ver [backend-payment-methods.md](backend-payment-methods.md).

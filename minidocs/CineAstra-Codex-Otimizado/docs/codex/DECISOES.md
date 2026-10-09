@@ -84,3 +84,33 @@ Registre solução/migration mínima e tarefa responsável por cada lacuna perti
 
 - A ausência de autorização explícita fornecedor-local foi resolvida por `fornecedor_locais` com concessão/revogação ADMIN. A conta FORNECEDOR determina o próprio escopo; criar/editar exige vínculo e local ativos. Produtos preservam fornecedor/local imutáveis.
 - `quantidade` inicia em zero e não tem PATCH genérico; movimentos posteriores serão a única via de saldo. `preco` é preço de catálogo decimal, distinto de custo de aquisição ausente no schema. DELETE arquiva registros referenciados. Patrimônio opcional ganha UNIQUE após trim/uppercase; dados legados precisam de auditoria antes do ALTER.
+
+## Decisões da tarefa 24 — 09/10/2026
+
+- `combos.id_local` torna o local explícito para validar a composição; NULL preserva legados sem atribuição arbitrária, que ficam fora da consulta pública até saneamento. Cada insumo do combo deve estar disponível no mesmo local e ter fornecedor/vínculo operacional ativos.
+- Combo já referenciado em `itens_pedido` não aceita PATCH nem substituição da composição; DELETE apenas arquiva. Fotos alternativas em `combos_imagens` não são variantes comerciais. O preço armazenado é base decimal; descontos/limite pertencem à tarefa 28, saldo/consumo à 26.
+
+## Decisões da tarefa 25 — 09/10/2026
+
+- Reutiliza storage/journal V4 em namespaces separados para insumos e combos. Staging de FORNECEDOR exige sidecar persistente com ID da conta; arquivos antigos sem sidecar falham fechados e precisam de reenvio. Galeria de insumo aceita ADMIN e fornecedor proprietário/vínculo ativo; combo permanece ADMIN. Escritas bloqueiam o pai e rebaixam PRINCIPAL anterior antes da promoção. Não há migration nova porque tabelas/UNIQUE V4 já estão no schema.
+
+## Decisões da tarefa 26 — 09/10/2026
+
+- `insumos.quantidade` permanece saldo físico; `quantidade_reservada` nova determina disponibilidade. Uma reserva por pedido/insumo agrega linhas de insumo e todos componentes de combo, com UNIQUE e transições ATIVA/CONSUMIDA/LIBERADA/COMPENSADA. Checkout futuro deve usar a mesma transação/conexão; nenhuma reserva pública é exposta antes da compra real.
+- Movimentos manuais só alteram saldo físico disponível e usam quantidade assinada: ENTRADA/DEVOLUCAO positivas, SAIDA/PERDA negativas, AJUSTE em ambos os sentidos. Consumo e compensação vinculam movimento à reserva; liberação não cria movimento físico. Alerta de mínimo usa disponível <= mínimo, sem afirmar garantia de reposição.
+
+## Decisões da tarefa 27 — 09/10/2026
+
+- Solicitação referencia exatamente um item de origem e um local de destino; equipamento exige sessão. Fornecedor precisa de vínculo ativo com ambos os locais. Aprovação cria uma logística única por solicitação; envio debita insumo e recebimento o credita em linha do destino, ligada ao envio. Equipamento transfere a linha integralmente; origem/destino históricos ficam na logística.
+- Devolução de equipamento exige recebimento e sessão ENCERRADA; registra uma única devolução e reatribui local de origem. O schema não prova uso real durante a sessão. Não há coordenadas/provider para RN11, logo `data_prevista` permanece sem ETA inventado.
+
+## Decisões da tarefa 28 — 09/10/2026
+
+- Cálculos financeiros usam centavos `BigInt`, percentuais em pontos-base e arredondamento half-up. Custos ausentes ficam NULL e bloqueiam cotação; preços publicados são atualizados explicitamente pelo ADMIN, e catálogo fora da base calculada torna a cotação não finalizável. Passo inicial de combo: 5% por item adicional, configurável e sujeito ao teto de 25%.
+- Meia usa metade do preço cobrado do público em geral, com promoções públicas refletidas nessa base, sem acumular descontos pessoais. Pode ficar abaixo do custo unitário por direito legal; a projeção de margem é avaliada pela ocupação e 50% de meias. Prévia de meia não é elegibilidade comprovada e não permite `commit` sem sinal confiável do checkout futuro.
+- Cupom não é consumido em cotação. A confirmação interna bloqueia o cupom, reserva uso por 15 minutos e grava snapshot imutável do pedido; pagamento/cancelamento futuro deve confirmar ou liberar a reserva. Benefício de plano só vale com cobrança PAGA/ISENTA da competência.
+
+## Decisões da tarefa 29 — 09/10/2026
+
+- A API recebe somente `setupReference` opaca de fluxo hospedado; o provider real emite token, marca e últimos quatro. Sem adaptador configurado, toda operação externa falha 503. Métodos legados sem token aparecem ao dono, mas são inelegíveis para cobrança.
+- DELETE arquiva o método para preservar FKs financeiras. `pagamento_intencoes` registra antes do gateway a obrigação XOR, método, valor e chave única por pagador; retry idêntico retorna o registro original. Despacho externo/webhook ficam na tarefa 30, fora dos locks.

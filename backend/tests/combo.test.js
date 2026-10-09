@@ -11,9 +11,9 @@ import { createComboModel } from '../models/comboModel.js';
 
 function fixture() {
     let state = { locals: [{ id_local: '1', status: 'ATIVO' }, { id_local: '2', status: 'ATIVO' }], inputs: [
-        { id_insumo: '10', id_local: '1', id_fornecedor: '5', nome: 'Milho', status: 'DISPONIVEL', fornecedor_status: 'ATIVO', vinculo_status: 'ATIVO' },
-        { id_insumo: '11', id_local: '2', id_fornecedor: '5', nome: 'Copo', status: 'DISPONIVEL', fornecedor_status: 'ATIVO', vinculo_status: 'ATIVO' },
-        { id_insumo: '12', id_local: '1', id_fornecedor: '5', nome: 'Sal', status: 'INDISPONIVEL', fornecedor_status: 'ATIVO', vinculo_status: 'ATIVO' }
+        { id_insumo: '10', id_local: '1', id_fornecedor: '5', nome: 'Milho', status: 'DISPONIVEL', fornecedor_status: 'ATIVO', usuario_status: 'ATIVO', tipo_usuario: 'FORNECEDOR', vinculo_status: 'ATIVO' },
+        { id_insumo: '11', id_local: '2', id_fornecedor: '5', nome: 'Copo', status: 'DISPONIVEL', fornecedor_status: 'ATIVO', usuario_status: 'ATIVO', tipo_usuario: 'FORNECEDOR', vinculo_status: 'ATIVO' },
+        { id_insumo: '12', id_local: '1', id_fornecedor: '5', nome: 'Sal', status: 'INDISPONIVEL', fornecedor_status: 'ATIVO', usuario_status: 'ATIVO', tipo_usuario: 'FORNECEDOR', vinculo_status: 'ATIVO' }
     ], combos: [], items: [], references: new Set(), audit: [] };
     let next = 1;
     const model = {
@@ -22,7 +22,7 @@ function fixture() {
         async inputs(ids) { return state.inputs.filter(x => ids.includes(x.id_insumo)); },
         async items(id) { return state.items.filter(x => x.id_combo === String(id)).map(x => ({ id_insumo: x.inputId, quantidade: x.quantidade, nome: state.inputs.find(i => i.id_insumo === x.inputId).nome })); },
         async referenced(id) { return state.references.has(String(id)); },
-        async list(q) { return state.combos.filter(c => c.id_local === q.localId && BigInt(c.id_combo) > BigInt(q.cursor ?? '0') && c.ativo && state.locals.find(l => l.id_local === c.id_local)?.status === 'ATIVO' && state.items.some(i => i.id_combo === c.id_combo) && state.items.filter(i => i.id_combo === c.id_combo).every(i => { const input = state.inputs.find(x => x.id_insumo === i.inputId); return input?.id_local === c.id_local && input.status === 'DISPONIVEL' && input.fornecedor_status === 'ATIVO' && input.vinculo_status === 'ATIVO'; })).slice(0, q.limit + 1); },
+        async list(q) { return state.combos.filter(c => c.id_local === q.localId && BigInt(c.id_combo) > BigInt(q.cursor ?? '0') && c.ativo && state.locals.find(l => l.id_local === c.id_local)?.status === 'ATIVO' && state.items.some(i => i.id_combo === c.id_combo) && state.items.filter(i => i.id_combo === c.id_combo).every(i => { const input = state.inputs.find(x => x.id_insumo === i.inputId); return input?.id_local === c.id_local && input.status === 'DISPONIVEL' && input.fornecedor_status === 'ATIVO' && input.usuario_status === 'ATIVO' && input.tipo_usuario === 'FORNECEDOR' && input.vinculo_status === 'ATIVO'; })).slice(0, q.limit + 1); },
         async create(c, input) { const id = String(next++); state.combos.push({ id_combo: id, id_local: input.localId, nome: input.nome, descricao: input.descricao ?? null, preco: input.preco, ativo: 1, data_cadastro: '2026-10-08 00:00:00' }); return id; },
         async update(c, id, input) { Object.assign(state.combos.find(x => x.id_combo === String(id)), input); },
         async replaceItems(c, id, items) { state.items = state.items.filter(x => x.id_combo !== String(id)); state.items.push(...items.map(x => ({ ...x, id_combo: String(id) }))); }

@@ -23,6 +23,7 @@ export function createImageUploadController(service) {
                 });
                 checkUploadSignal(req.signal);
                 saved = await service.upload(req.file, { actor: req.usuario, signal: req.signal, requestId: req.requestId });
+                if (req.usuario.tipo === 'FORNECEDOR') saved.previewUrl = `/api/uploads/images/${saved.key}`;
                 checkUploadSignal(req.signal);
                 // Só conservar o objeto se a resposta foi encerrada normalmente.
                 await new Promise((resolve, reject) => {
@@ -31,14 +32,14 @@ export function createImageUploadController(service) {
                     res.once('finish', () => { res.off('close', close); resolve(); });
                     res.location(saved.previewUrl); success(res, saved, 201);
                 });
-            } catch (error) { if (saved) await service.remove(saved.key); throw error; }
+            } catch (error) { if (saved) await service.remove(saved.key, req.usuario?.id); throw error; }
             finally { if (req.file) delete req.file.buffer; release(); }
         },
         async preview(req, res) {
-            const data = await service.read(req.params.key);
+            const data = await service.read(req.params.key, req.usuario.id);
             res.set({ 'Content-Type': 'image/webp', 'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': "default-src 'none'; sandbox", 'Content-Disposition': 'inline; filename="preview.webp"' });
             res.send(data);
         },
-        async remove(req, res) { await service.remove(req.params.key); res.sendStatus(204); }
+        async remove(req, res) { await service.remove(req.params.key, req.usuario.id); res.sendStatus(204); }
     };
 }

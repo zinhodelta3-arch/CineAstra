@@ -271,3 +271,27 @@ O módulo de fornecedores mantém routes/controller/service/model globais, auth 
 ## Tarefa 23 — insumos e equipamentos (08/10/2026)
 
 `productModel`, `productService`, controller, routes e validators compõem os cadastros em `/api/inputs` e `/api/equipment`. A migration `20261008_08_supplier_products.sql` cria o vínculo operacional `fornecedor_locais` e a chave de patrimônio normalizado. O service deriva o fornecedor da conta, verifica o vínculo ativo antes de escrever e arquiva recursos referenciados logicamente. `preco` permanece string decimal; `quantidade` inicia em zero e é reservada aos movimentos de estoque. Contrato e limites: [backend-products.md](backend-products.md).
+
+## Tarefa 24 — combos e composição (09/10/2026)
+
+`comboModel`, `comboService`, controller, routes e validators integram combos ao app existente. `combos.id_local` é acrescentado por migration explícita; legados sem local são preservados, mas não publicados. O service valida local/insumos e bloqueia mutações em combo já referenciado por pedido, com arquivamento lógico. O catálogo público filtra disponibilidade operacional; estoque e preço final permanecem nas tarefas 26/28. Contrato: [backend-combos.md](backend-combos.md).
+
+## Tarefa 25 — galerias de insumos e combos (09/10/2026)
+
+O schema V4 de imagens comerciais já constava no manifest; `commerceGalleryModel`, service, controller, routes e validators foram integrados à mesma arquitetura da galeria de filmes. Storage/journal foram parametrizados por namespace e staging ganhou sidecar persistente de proprietário para FORNECEDOR. Escritas bloqueiam o pai e rebaixam a PRINCIPAL anterior antes de promover outra; UNIQUE gerada protege o banco. Público recebe somente imagens de recursos disponíveis. Contrato: [backend-commerce-galleries.md](backend-commerce-galleries.md).
+
+## Tarefa 26 — movimentos e reserva de estoque (09/10/2026)
+
+`inventoryModel`, `inventoryService`, controller, routes e validators compõem saldo, movimentos e alertas por local. A migration `20261009_10_inventory_reservations.sql` separa saldo físico/reservado e vincula reservas ao pedido e movimentos históricos. O serviço de checkout interno recebe a conexão transacional do chamador, expande combos e bloqueia insumos em ordem crescente; consumir, liberar e compensar são transições explícitas. Não há compra nem reserva pública antes do módulo comercial. Contrato: [backend-inventory.md](backend-inventory.md).
+
+## Tarefa 27 — solicitações e logística (09/10/2026)
+
+`supplyModel`, `supplyService`, controller, routes e validators integram solicitações, estoque por local e transporte. A migration `20261009_11_supply_logistics.sql` liga logística a identidade/quantidade de item, recebedor, destino e movimentos, além da devolução de equipamento. Estados e saldos mudam em uma transação com auditoria; o recebimento tem uma única transição válida. O insumo transferido ganha linha no destino rastreada pela logística; equipamento move a linha e preserva origem/destino no envio. Contrato e limites: [backend-supply-logistics.md](backend-supply-logistics.md).
+
+## Tarefa 28 — custos, parâmetros e cotação (09/10/2026)
+
+`pricingMath` centraliza centavos inteiros e arredondamento; `pricingModel`, `pricingService`, controller, routes e validators ligam custos reais, parâmetros, promoções, cupons, benefícios de plano e cotação. A migration `20261009_12_pricing.sql` adiciona custos opcionais, configuração por categoria, uso de cupom e snapshot de pedido. ADMIN publica preço calculado nos campos atuais de catálogo; cotação pública redige custo/margem. `commit` é consumidor interno da transação do pedido e reserva cupom com lock; a integração no checkout virá nas tarefas 33–34. Contrato: [backend-pricing.md](backend-pricing.md).
+
+## Tarefa 29 — métodos tokenizados e provider (09/10/2026)
+
+`paymentMethodModel`, service, controller, routes e validators gerenciam somente métodos próprios. Token e identificação mascarada vêm de provider externo injetado; o padrão falha com 503. `prepare` registra intenção idempotente antes do despacho de pagamento e verifica obrigação XOR, pagador e método na conexão transacional. Migration `20261009_13_payment_methods.sql` preserva métodos legados sem token e cria a intenção persistente. Chamadas de cobrança e conciliação pertencem à tarefa 30. Contrato: [backend-payment-methods.md](backend-payment-methods.md).

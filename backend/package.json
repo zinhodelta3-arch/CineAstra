@@ -26,7 +26,13 @@
     "generate:openapi:notifications": "node scripts/generateNotificationOpenapi.js",
     "generate:openapi:suppliers": "node scripts/generateSupplierOpenapi.js",
     "generate:openapi:products": "node scripts/generateProductOpenapi.js",
-    "generate:openapi:combos": "node scripts/generateComboOpenapi.js"
+    "generate:openapi:combos": "node scripts/generateComboOpenapi.js",
+    "generate:openapi:commerce-gallery": "node scripts/generateCommerceGalleryOpenapi.js",
+    "generate:openapi:inventory": "node scripts/generateInventoryOpenapi.js",
+    "generate:openapi:supply": "node scripts/generateSupplyOpenapi.js",
+    "generate:openapi:pricing": "node scripts/generatePricingOpenapi.js",
+    "generate:openapi:payment-methods": "node scripts/generatePaymentMethodOpenapi.js",
+    "generate:openapi:payments": "node scripts/generatePaymentOpenapi.js"
   },
   "dependencies": {
     "bcryptjs": "3.0.3",

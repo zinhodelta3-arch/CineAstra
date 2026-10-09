@@ -250,3 +250,54 @@ RF08–46 e demais RN/RNF não foram ampliados fora das dependências explícita
 | RF25 insumos | `/api/inputs`; `fornecedor_locais`; preço string, saldo inicial zero | `product.test.js`: fornecedor alheio, local, PATCH de saldo/custo rejeitado; 98/98 totais | Movimentos/consumo na tarefa 26; MySQL `_test` ausente |
 | RF26 equipamentos | `/api/equipment`; patrimônio normalizado UNIQUE; arquivamento lógico | `product.test.js`: patrimônio duplicado e referência preservada; OpenAPI 140 operações | Auditoria de duplicatas legadas e ALTER em MySQL `_test` pendentes |
 | RF45 catálogo fornecedor | ADMIN concede/revoga locais; fornecedor opera próprios itens | Testes de perfil, escopo e SQL parametrizado; cenário MySQL opt-in | Estoque/logística, migrations reais e frontend futuros |
+
+## Tarefa 24 — combos e composição
+
+| Requisito | Implementação/endpoint | Evidência executada | Limite / dependência |
+| --- | --- | --- | --- |
+| RF45 combos | ADMIN `POST/GET/PATCH/DELETE /api/admin/combos`, `PUT /:id/items`; público `GET /api/combos` e `/:id` | `combo.test.js`: perfil, composição, local e histórico; 101/101 testes, OpenAPI 147 operações | Migration/FK e cenário MySQL aguardam `_test` vazio |
+| RF12 compra de combo | Catálogo público de combo disponível por local | Teste de visibilidade e arquivamento | Pedido, ticket e consumo reais pertencem a tarefas posteriores; RF12 parcial |
+| RN10 desconto proporcional | Preço base decimal persistido, sem cálculo de desconto | Validação de dinheiro exato em create/PATCH | Preço/desconto/teto no serviço da tarefa 28; RN10 pendente |
+
+## Tarefa 25 — galerias comerciais V4
+
+| Requisito | Implementação/endpoint | Evidência executada | Limite / dependência |
+| --- | --- | --- | --- |
+| V4 insumos/combos imagens | 14 operações de galeria em `/api/inputs/:id/images`, `/api/combos/:id/images`, administração e bytes; PRINCIPAL/ALTERNATIVA, ordem/alt | `commerceGallery.test.js`: principal concorrente, propriedade, compensação, visibilidade; 104/104 totais; OpenAPI 164 operações | UNIQUE/locks reais no MySQL `_test` ainda não executados |
+| RNF05 staging fornecedor | `POST/GET/DELETE /api/uploads/images`; sidecar de proprietário persistente | Teste staging alheio 403; regressão de upload/galeria de filmes aprovada | Staging anterior sem sidecar exige reenvio; produção depende de storage privado configurado |
+
+## Tarefa 26 — estoque
+
+| Requisito | Implementação/endpoint | Evidência executada | Limite / dependência |
+| --- | --- | --- | --- |
+| RF25 estoque por local | `GET /api/inventory/inputs/:id`, `/equipment/:id`, `GET/POST /movements`; saldo físico/reservado | `inventory.test.js`: sinal, item único, propriedade, saldo não negativo; 108/108 totais; OpenAPI 169 | Migration/constraints/locks MySQL `_test` não executados |
+| RF25 combo/checkout | Serviço interno `reserve`/`transition` na conexão do pedido, componentes agregados e locks ordenados | Último item concorrente, rollback parcial, consumo/liberação/compensação; cenário SQL opt-in | Checkout/pagamento real deve chamar o serviço na mesma transação em etapa posterior |
+| RF43 / RN15 alerta | `GET /api/inventory/alerts?localId=...` usa disponível <= mínimo | Teste de consulta e escopo | Solicitação não planejada/logística e UI futuras; alerta não garante reposição antes de zero |
+
+## Tarefa 27 — solicitações e logística
+
+| Requisito | Implementação/endpoint | Evidência executada | Limite / dependência |
+| --- | --- | --- | --- |
+| RF27 envio/recebimento | `/api/logistics` GET, detalhe, send/transit/receive/cancel; migration com item, destino, UNIQUE e movimentos | `supply.test.js`: recebimento repetido, fornecedor alheio e saldo | Constraints/locks MySQL `_test` ainda não executados |
+| RF28 devolução | `POST /api/logistics/:id/return` após sessão ENCERRADA, equipamento integral e local de origem preservado | Teste devolução antes/depois do encerramento e repetição | Uso efetivo de equipamento não é registrado no schema; regra depende do estado da sessão |
+| RF31 / RF44 solicitação | `/api/stock`, `/api/stock/requests` e aprovação/recusa; sessão/local/equipe e item XOR | Teste local errado, equipe alheia, `a_chegar` | Interface frontend e MySQL `_test` pendentes |
+| RN11 ETA | Origem/destino persistidos e visíveis; `data_prevista` sem preenchimento artificial | Contrato rejeita cálculo sem provider | Distância real e fórmula/provider ainda ausentes; RN11 parcial |
+
+## Tarefa 28 — precificação
+
+| Requisito | Implementação/endpoint | Evidência executada | Limite / dependência |
+| --- | --- | --- | --- |
+| RN05–RN08 | Custos de aluguel/sessão/insumo/plano; `/api/pricing/quote`, `/api/admin/pricing/costs`, `/publish` | `pricing.test.js`: C100→160→120, sessão e custo exato | Cadastro de custos reais e MySQL `_test` pendentes; RN06 depende do custo completo de benefícios |
+| RN09 | Não há rateio nesta tarefa | Documentado para tarefa 39 | Participantes/cotas/cobranças ainda não integrados |
+| RN10 / RN16 | Combo proporcional, promoções, benefícios de plano e cupom sob teto; reserva de cupom interna | Testes combo, limite concorrente, snapshot e rollback simulado | Checkout das tarefas 33–34 deve consumir o serviço; MySQL real pendente |
+| RN18 / Apêndice A | Parâmetros iniciais 60/20/25, ocupação 20, projeção 50%; ADMIN vê `belowMargin` | Testes margem sobre custo, meia e projeção | Outros parâmetros operacionais em módulos futuros; interface ADMIN não alterada |
+| RN23 na cotação | Meia do preço público, sem acumular benefício pessoal e sem piso de custo que negue direito | Teste meia e prévia não finalizável | Comprovação/cota/checkout nas tarefas 32–35 |
+
+## Tarefa 29 — métodos e provider
+
+| Requisito | Implementação/endpoint | Evidência executada | Limite / dependência |
+| --- | --- | --- | --- |
+| RF06 | Cinco operações em `/api/users/me/payment-methods`; próprio, principal e arquivamento lógico | `paymentMethod.test.js`: método alheio 404; 122 testes totais | Tokenização real depende de provider; migration/locks MySQL `_test` pendentes |
+| RF18 | `prepare` interno aceita cobrança de assinatura própria e soma multa em centavos | Teste cobrança 19,95 + 2,00 e obrigação XOR | Recorrência, rateio, mandato e cobrança efetiva em tarefas 30/38–39 |
+| RF20 | `prepare` interno aceita pedido próprio e chave idempotente persistente | Teste chave repetida, chave conflitante e método alheio | Endpoint de pagamento/webhook e conciliação na tarefa 30 |
+| RNF22 | API rejeita PAN/CVV/token no corpo; método só recebe token do provider, DTO omite token | Teste schema e provider ausente 503 | Sem adaptador real, não declarar tokenização produtiva concluída |

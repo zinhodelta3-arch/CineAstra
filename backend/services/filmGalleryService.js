@@ -25,7 +25,7 @@ export function createFilmGalleryService({ model, identity, storage }) {
         },
         async create(id, input, context) {
             await identity.transaction(c => lock(c, id, context), context);
-            const saved = await storage.promote(input.stagingKey, id, context.signal);
+            const saved = await storage.promote(input.stagingKey, id, context.signal, context.actor.id);
             try {
                 return await identity.transaction(async c => {
                     await lock(c, id, context);

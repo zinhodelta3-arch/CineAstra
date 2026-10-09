@@ -63,14 +63,40 @@ import { createProductModel } from './models/productModel.js';
 import { createProductService } from './services/productService.js';
 import { createProductController } from './controllers/productController.js';
 import { productRoutes } from './routes/productRoutes.js';
+import { createCommerceGalleryModel } from './models/commerceGalleryModel.js';
+import { createCommerceGalleryService } from './services/commerceGalleryService.js';
+import { createCommerceGalleryController } from './controllers/commerceGalleryController.js';
+import { commerceGalleryRoutes } from './routes/commerceGalleryRoutes.js';
+import { join } from 'node:path';
 import { createComboModel } from './models/comboModel.js';
 import { createComboService } from './services/comboService.js';
 import { createComboController } from './controllers/comboController.js';
 import { comboRoutes } from './routes/comboRoutes.js';
+import { createInventoryModel } from './models/inventoryModel.js';
+import { createInventoryService } from './services/inventoryService.js';
+import { createInventoryController } from './controllers/inventoryController.js';
+import { inventoryRoutes } from './routes/inventoryRoutes.js';
+import { createSupplyModel } from './models/supplyModel.js';
+import { createSupplyService } from './services/supplyService.js';
+import { createSupplyController } from './controllers/supplyController.js';
+import { supplyRoutes } from './routes/supplyRoutes.js';
+import { createPricingModel } from './models/pricingModel.js';
+import { createPricingService } from './services/pricingService.js';
+import { createPricingController } from './controllers/pricingController.js';
+import { pricingRoutes } from './routes/pricingRoutes.js';
+import { unavailablePaymentProvider } from './providers/paymentProvider.js';
+import { createPaymentMethodModel } from './models/paymentMethodModel.js';
+import { createPaymentMethodService } from './services/paymentMethodService.js';
+import { createPaymentMethodController } from './controllers/paymentMethodController.js';
+import { paymentMethodRoutes } from './routes/paymentMethodRoutes.js';
+import { createPaymentModel } from './models/paymentModel.js';
+import { createPaymentService } from './services/paymentService.js';
+import { createPaymentController } from './controllers/paymentController.js';
+import { paymentRoutes,paymentWebhookRoutes } from './routes/paymentRoutes.js';
 
 const specification = JSON.parse(readFileSync(new URL('./docs/openapi.json', import.meta.url), 'utf8'));
 
-export function createApp({ config, database, logQueue, retention, sessionProvider, storeFactory, identityModel, identityProviders = unavailableIdentityProviders(), captchaProvider = unavailableCaptchaProvider(), lifecycle = { stopping: false }, registerRoutes }) {
+export function createApp({ config, database, logQueue, retention, sessionProvider, storeFactory, identityModel, identityProviders = unavailableIdentityProviders(), captchaProvider = unavailableCaptchaProvider(), paymentProvider = unavailablePaymentProvider(), lifecycle = { stopping: false }, registerRoutes }) {
     const app = express();
     app.disable('x-powered-by');
     app.set('trust proxy', config.trustProxy.length ? config.trustProxy : false);
@@ -92,6 +118,9 @@ export function createApp({ config, database, logQueue, retention, sessionProvid
         else cb(new ApiError('Origem não permitida', 403, null, 'CORS_DENIED'));
     }, methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key'], exposedHeaders: ['X-Request-Id', 'Retry-After'], credentials: false, maxAge: 600 }));
+    const paymentMethods=createPaymentMethodService({ model: createPaymentMethodModel(database), identity, provider: paymentProvider });
+    const payments=createPaymentController(createPaymentService({ model: createPaymentModel(database), methods:paymentMethods, identity, provider:paymentProvider }));
+    app.use('/api/payments/webhooks',express.raw({type:'application/json',limit:'64kb',inflate:false}),paymentWebhookRoutes(payments));
     app.use(express.json({ limit: config.bodyLimit, strict: true, inflate: false }));
     app.use(express.urlencoded({ limit: config.bodyLimit, extended: false, parameterLimit: 50, inflate: false }));
     app.use(infrastructureRoutes(createHealthController(createHealthService(database, retention, lifecycle))));
@@ -106,11 +135,11 @@ export function createApp({ config, database, logQueue, retention, sessionProvid
     }
     app.use(identityRoutes(createIdentityController(identity, profile), dependencies));
     app.use(catalogRoutes(createCatalogController(createCatalogService({ model: createCatalogModel(database), identity, mediaHosts: config.catalog?.mediaHosts ?? [] })), dependencies));
-    const staging = createImageStorage(config.imageUpload);
+    const staging = createImageStorage({ ...config.imageUpload, enforceOwner: true });
     app.use(imageUploadRoutes(createImageUploadController(createImageUploadService({
         storage: staging,
         authorize: context => identity.transaction(async c => {
-            if ((await identity.activeActor(c, context)).tipo_usuario !== 'ADMIN') throw ApiError.acessoNegado();
+            if (!['ADMIN','FORNECEDOR'].includes((await identity.activeActor(c, context)).tipo_usuario)) throw ApiError.acessoNegado();
         }, context)
     })), dependencies));
     app.use(filmGalleryRoutes(createFilmGalleryController(createFilmGalleryService({
@@ -125,7 +154,19 @@ export function createApp({ config, database, logQueue, retention, sessionProvid
     app.use(notificationRoutes(createNotificationController(notifications), dependencies));
     app.use(supplierRoutes(createSupplierController(createSupplierService({ model: createSupplierModel(database), identity })), dependencies));
     app.use(productRoutes(createProductController(createProductService({ model: createProductModel(database), identity })), dependencies));
+    app.use(commerceGalleryRoutes(createCommerceGalleryController(createCommerceGalleryService({
+        model: createCommerceGalleryModel(database), identity,
+        storage: {
+            inputs: createGalleryStorage({ directory: config.gallery?.directory ? join(config.gallery.directory, 'inputs') : null, staging, namespace: 'input-images' }),
+            combos: createGalleryStorage({ directory: config.gallery?.directory ? join(config.gallery.directory, 'combos') : null, staging, namespace: 'combo-images' })
+        }
+    })), dependencies));
     app.use(comboRoutes(createComboController(createComboService({ model: createComboModel(database), identity })), dependencies));
+    app.use(inventoryRoutes(createInventoryController(createInventoryService({ model: createInventoryModel(database), identity })), dependencies));
+    app.use(supplyRoutes(createSupplyController(createSupplyService({ model: createSupplyModel(database), identity })), dependencies));
+    app.use(pricingRoutes(createPricingController(createPricingService({ model: createPricingModel(database), identity })), dependencies));
+    app.use(paymentMethodRoutes(createPaymentMethodController(paymentMethods), dependencies));
+    app.use(paymentRoutes(payments,dependencies));
     // Ponto de composição para módulos futuros e fixtures explícitas de testes.
     registerRoutes?.(app, dependencies);
     app.use((req, res, next) => next(ApiError.naoEncontrado()));

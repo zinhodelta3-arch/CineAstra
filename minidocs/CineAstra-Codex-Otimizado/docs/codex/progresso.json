@@ -183,43 +183,49 @@
       "id": "24",
       "titulo": "Combos e composição",
       "arquivo": "docs/codex/tasks/24-combos-e-composicao.md",
-      "estado": "PENDENTE",
-      "observacao": ""
+      "estado": "BLOQUEADA",
+      "observacao": "Combos e composicao integrados; 101 testes e OpenAPI 147 operacoes validos. Migration id_local e aceite SQL/FK/referencia historica pendentes de TEST_DB_* e schema _test vazio. RF12/RN10 parciais ate compra/consumo e preco/desconto.",
+      "atualizado_em": "2026-10-09T11:40:03Z"
     },
     {
       "id": "25",
       "titulo": "Galerias de insumos e combos",
       "arquivo": "docs/codex/tasks/25-galerias-de-insumos-e-combos.md",
-      "estado": "PENDENTE",
-      "observacao": ""
+      "estado": "BLOQUEADA",
+      "observacao": "Galerias V4 integradas: 104 testes e OpenAPI 164 operacoes validos. Aceite de UNIQUE/locks no MySQL pendente de TEST_DB_* e schema _test vazio. Nenhuma migration nova ou aplicada; staging antigo sem sidecar deve ser reenviado.",
+      "atualizado_em": "2026-10-09T11:46:35Z"
     },
     {
       "id": "26",
       "titulo": "Movimentos e reserva de estoque",
       "arquivo": "docs/codex/tasks/26-movimentos-e-reserva-de-estoque.md",
-      "estado": "PENDENTE",
-      "observacao": ""
+      "estado": "BLOQUEADA",
+      "observacao": "Movimentos, saldos e reserva/consumo/compensacao internos integrados; 108 testes e OpenAPI 169 operacoes validos. Aceite SQL/locks depende de TEST_DB_* e schema _test vazio; migration nao aplicada. Checkout real ainda precisa chamar o servico na mesma transacao.",
+      "atualizado_em": "2026-10-09T11:54:40Z"
     },
     {
       "id": "27",
       "titulo": "Solicitações e logística",
       "arquivo": "docs/codex/tasks/27-solicitacoes-e-logistica.md",
-      "estado": "PENDENTE",
-      "observacao": ""
+      "estado": "BLOQUEADA",
+      "observacao": "Solicitacoes, estoque local, envio, recebimento unico e devolucao integral de equipamento integrados; 111 testes e OpenAPI 182 operacoes validos. Migration 11 nao aplicada; aceite FK/CHECK/UNIQUE, locks e rollback depende de TEST_DB_* e schema _test isolado. ETA/distancia real e uso de equipamento carecem de dados/provider.",
+      "atualizado_em": "2026-10-09T12:03:15Z"
     },
     {
       "id": "28",
       "titulo": "Custos, parâmetros, promoções e cotação",
       "arquivo": "docs/codex/tasks/28-custos-parametros-promocoes-e-cotacao.md",
-      "estado": "PENDENTE",
-      "observacao": ""
+      "estado": "BLOQUEADA",
+      "observacao": "Motor em centavos, custos, parametros, descontos, meia, cupom concorrente e snapshot integrados; 119 testes e OpenAPI 199 operacoes validos. Migration 12 nao aplicada; aceite de FK/CHECK/locks/rollback depende de TEST_DB_* e schema _test isolado. Custos reais, comprovacao de meia e checkout permanecem dependencias.",
+      "atualizado_em": "2026-10-09T12:17:53Z"
     },
     {
       "id": "29",
       "titulo": "Métodos tokenizados e provider de pagamento",
       "arquivo": "docs/codex/tasks/29-metodos-tokenizados-e-provider-de-pagamento.md",
-      "estado": "PENDENTE",
-      "observacao": ""
+      "estado": "BLOQUEADA",
+      "observacao": "Cinco rotas de metodos proprios, provider fail-closed e preparo idempotente de pedido/cobranca integrados; 122 testes e OpenAPI 204 operacoes validos. Migration 13 nao aplicada; aceite MySQL _test e tokenizacao em gateway real bloqueados por ambiente/provider ausentes. Webhook e conciliacao pertencem a tarefa 30.",
+      "atualizado_em": "2026-10-09T12:24:47Z"
     },
     {
       "id": "30",

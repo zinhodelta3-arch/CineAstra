@@ -41,7 +41,12 @@ export async function migrationPlan() {
         ['20261008_06_notification_dedupe.sql', () => true],
         ['20261008_07_supplier_cnpj.sql', () => true],
         ['20261008_08_supplier_products.sql', () => true],
-        ['20261008_09_combo_location.sql', () => true]
+        ['20261008_09_combo_location.sql', () => true],
+        ['20261009_10_inventory_reservations.sql', () => true],
+        ['20261009_11_supply_logistics.sql', () => true],
+        ['20261009_12_pricing.sql', () => true],
+        ['20261009_13_payment_methods.sql', () => true],
+        ['20261009_14_payments.sql', () => true]
     ];
     const plan = [];
     for (const [file, filter] of sources) {

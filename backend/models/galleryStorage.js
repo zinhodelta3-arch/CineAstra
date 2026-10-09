@@ -6,7 +6,10 @@ export const galleryUrl = key => `/api/film-images/${key}`;
 export function galleryKey(url) { const key = typeof url === 'string' && url.startsWith('/api/film-images/') ? url.slice('/api/film-images/'.length) : ''; return IMAGE_KEY.test(key) ? key : null; }
 
 // Journal de compensação independente do SQL, nunca disponibilizado como arquivo HTTP.
-export function createGalleryStorage({ directory, staging }) {
+export function createGalleryStorage({ directory, staging, namespace = 'film-images' }) {
+    if (!['film-images', 'input-images', 'combo-images'].includes(namespace)) throw new TypeError('Galeria inválida');
+    const url = key => `/api/${namespace}/${key}`;
+    const keyFromUrl = value => { const key = typeof value === 'string' && value.startsWith(`/api/${namespace}/`) ? value.slice(`/api/${namespace}/`.length) : ''; return IMAGE_KEY.test(key) ? key : null; };
     const root = directory ? resolve(directory) : null;
     const files = createImageStorage({ directory, expiresAfterMs: null, maxFiles: 2000 });
     const journal = key => { if (!root) throw ApiError.indisponivel(); if (!IMAGE_KEY.test(key)) throw ApiError.naoEncontrado(); return join(root, `${key}.json`); };
@@ -18,13 +21,13 @@ export function createGalleryStorage({ directory, staging }) {
         try { await writeFile(target, JSON.stringify({ key, filmId }), { flag: 'wx', mode: 0o600 }); } catch (e) { if (e.code !== 'EEXIST') throw e; }
     }
     return {
-        async promote(stagingKey, filmId, signal) {
-            const buffer = await staging.read(stagingKey);
+        async promote(stagingKey, filmId, signal, ownerId) {
+            const buffer = await staging.read(stagingKey, ownerId);
             const saved = await files.put({ buffer }, signal);
             try { await mark(saved.key, filmId); } catch (error) { await files.remove(saved.key); throw error; }
-            return { key: saved.key, url: galleryUrl(saved.key) };
+            return { key: saved.key, url: url(saved.key) };
         },
-        mark,
+        mark, url, keyFromUrl,
         async settle(key, referenced) {
             if (!referenced) await files.remove(key);
             try { await unlink(journal(key)); } catch (error) { if (error.code !== 'ENOENT') throw error; }
