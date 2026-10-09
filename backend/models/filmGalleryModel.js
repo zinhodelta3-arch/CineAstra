@@ -8,9 +8,10 @@ export function createFilmGalleryModel(database) {
         image: (c, filmId, id) => one(c, `SELECT ${columns} FROM filmes_imagens i WHERE i.id_filme = ? AND i.id_imagem = ?`, [filmId, id]),
         async list(id, q, admin) {
             if (!Number.isInteger(q.limit) || q.limit < 1 || q.limit > 100) throw new TypeError('Limite inválido');
-            const args = [id, q.cursor ?? '0'];
+            const [order, imageId] = q.cursor && q.cursor !== '0' ? q.cursor.split(':') : ['0', '0'];
+            const args = [id, order, order, imageId];
             if (q.tipo) args.push(q.tipo);
-            return (await database.execute(`SELECT ${columns} FROM filmes_imagens i JOIN filmes f ON f.id_filme = i.id_filme WHERE i.id_filme = ? AND i.id_imagem > ?${q.tipo ? ' AND i.tipo = ?' : ''}${admin ? '' : " AND f.status = 'ATIVO'"} ORDER BY i.id_imagem LIMIT ${q.limit + 1}`, args))[0];
+            return (await database.execute(`SELECT ${columns} FROM filmes_imagens i JOIN filmes f ON f.id_filme = i.id_filme WHERE i.id_filme = ? AND (i.ordem > ? OR (i.ordem = ? AND i.id_imagem > ?))${q.tipo ? ' AND i.tipo = ?' : ''}${admin ? '' : " AND f.status = 'ATIVO'"} ORDER BY i.ordem,i.id_imagem LIMIT ${q.limit + 1}`, args))[0];
         },
         clearPrincipal: (c, id, tipo) => c.execute('UPDATE filmes_imagens SET principal = FALSE WHERE id_filme = ? AND tipo = ? AND principal = TRUE', [id, tipo]),
         async insert(c, id, data) {

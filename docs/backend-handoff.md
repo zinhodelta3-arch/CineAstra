@@ -1,5 +1,23 @@
 # CineAstra — handoff tarefa 15
 
+## Atualização tarefa 18 — 08/10/2026
+
+**Implementada; aceite SQL BLOQUEADO por ausência de banco de teste isolado.** Criados `backend/models/sessionModel.js`, `services/sessionService.js`, `validators/sessionValidators.js`, `controllers/sessionController.js`, `routes/sessionRoutes.js`, `scripts/generateSessionOpenapi.js`, `tests/session.test.js` e [backend-sessions.md](backend-sessions.md). App, package.json, OpenAPI, teste MySQL opcional e registros de continuidade atualizados. Frontend intacto.
+
+Sete endpoints: GET `/api/sessions[/:id]`, GET `/api/admin/sessions[/:id]`, POST `/api/admin/sessions`, PATCH/DELETE `/api/admin/sessions/:id`. RF09 e RF30: consulta/gestão de horários por local coberta no backend, com RN19 de uma hora entre sessões do mesmo local e revalidação sob lock. Item de pedido bloqueia alterações que invalidariam direitos. RN20 não aplicado a sessões administrativas; reserva de usuário exige modelo/fluxo futuro. Nenhuma migration nova/aplicada. `npm test` 76/76; OpenAPI 95 operações; duas suítes MySQL puladas sem `TEST_DB_*`. Próximo passo: validar corrida e FKs no `_test` confirmado, depois tarefa 19.
+
+## Atualização tarefa 17 — 08/10/2026
+
+**Implementada; aceite SQL BLOQUEADO por ausência de banco de teste isolado.** Criados `backend/models/venueModel.js`, `services/venueService.js`, `validators/venueValidators.js`, `controllers/venueController.js`, `routes/venueRoutes.js`, `scripts/generateVenueOpenapi.js`, `tests/venue.test.js` e [backend-venues.md](backend-venues.md). App, package.json, OpenAPI, teste MySQL opcional e registros de continuidade atualizados. Frontend intacto.
+
+21 operações: GET público/admin de listas e detalhes de locais, salas e assentos; POST/PATCH/DELETE administrativos para cada entidade. Todos sob `/api/locations` ou `/api/admin/locations`, aninhando salas por `:localId` e assentos por `:roomId`. DELETE arquiva. RF45 cobre gestão de locais e estrutura de salas/assentos; RF09/RF30 recebem somente cadastro/consulta da estrutura, pois sessões/horários são tarefa 18. Nenhuma migration nova/aplicada; tabelas/FKs/UNIQUE da base são reutilizadas. `npm test`: 72/72; `npm run validate:openapi`: 88 operações válidas; 2 suítes MySQL puladas sem `TEST_DB_*`. Próximo passo: validar constraints/locks em schema `_test` vazio confirmado, então tarefa 18 deve adquirir os mesmos locks ao agendar sessão.
+
+## Atualização tarefa 16 — 08/10/2026
+
+**Implementada; aceite SQL BLOQUEADO por ausência de banco de teste isolado.** Galeria de filmes V4 integrada com sete operações HTTP: GET público `/api/films/:id/images`, GET WebP `/api/film-images/:key`; GET/POST `/api/admin/films/:id/images`, PATCH/DELETE `/api/admin/films/:id/images/:imageId` e POST `/api/admin/films/:id/images/reconcile`. ADMIN + sessão/2FA para gestão. Reutiliza staging 15, publica cópia durável, bloqueia filme em toda escrita, mantém uma principal por tipo com constraint V4 e sincroniza `filmes.imagem`.
+
+Arquivos novos: `backend/controllers/filmGalleryController.js`, `routes/filmGalleryRoutes.js`, `scripts/generateFilmGalleryOpenapi.js`, `tests/filmGallery.test.js`, `docs/backend-film-gallery.md`; models/service/validators de galeria pré-existentes foram integrados e ajustados. Config/roteamento/OpenAPI e middleware de prazo Node 24 atualizados. Nenhuma migration criada/aplicada. `npm ci` com lockfile intacto, `npm test` 68/68, `npm run validate:openapi` válido (67 operações). Integração MySQL preparada em `tests/integration/identity.mysql.test.js`, sem execução por falta de `TEST_DB_*`/confirmação de schema `_test` vazio e não produtivo. Próximo passo: prover esse ambiente, executar aceite SQL da 14/16 e revisar volume privado/backup para produção. [Detalhes](backend-film-gallery.md).
+
 Atualização 08/10/2026: **tarefa 15 CONCLUÍDA — staging administrativo seguro de imagens**. 64/64 testes aprovados; OpenAPI válido, 60 operações; auditoria da instalação sem vulnerabilidades reportadas. Nenhuma migration criada/aplicada. [Contrato, arquivos e limites operacionais](backend-image-uploads.md).
 
 - POST `/api/admin/uploads/images`, GET/DELETE `/api/admin/uploads/images/:key`, todos ADMIN + sessão/2FA. Multer com limites, assinatura + decoder Sharp, WebP sem metadados, dimensões limitadas, nomes aleatórios, prévia privada, cleanup em abort/erro, expiração e quota de staging.
@@ -211,3 +229,23 @@ Aceite 01: app importável sem listen, env inválido falha seguro, HTTP health/4
 ## Continuidade obrigatória
 
 Atualizar architecture/coverage/handoff em cada rodada e a OpenAPI no módulo que criar/alterar rotas. Endpoints nas matrizes são planejamento, não implementação. Migrations M00–M16 têm dono e critérios, não execução autorizada em lote. Revalidar schema antes de escrever SQL; não recriar V4 já aplicado nem apagar histórico para revender assento. Nenhum requisito crítico desaparece pela falta de coluna: responsável/solução ou dependência impeditiva está registrado.
+
+## Checkpoint tarefa 19 — 08/10/2026
+
+Equipes, membros, solicitações e convites integrados em 13 operações `/api/teams`. `npm test` 81/81; OpenAPI 108 operações válida; `npm run test:integration` pulou duas suítes por ausência de `TEST_DB_*`. Migration `20261008_04_team_entries.sql` preparada, não aplicada. Antes do aceite SQL: fornecer schema `_test` vazio e não produtivo, configurar opt-in `RUN_IDENTITY_MYSQL_TESTS=true`, conferir baseline e executar `npm run test:integration`. Ver [backend-teams.md](backend-teams.md) para contrato, autorização e impacto. Não foi criado frontend nem chamado interno; tarefa seguinte é 20.
+
+## Checkpoint tarefa 20 — 08/10/2026
+
+Chamados internos integrados em 10 operações `/api/teams/:id/chamados`, separados de suporte. `npm test` 86/86; OpenAPI 118 operações válida. Migration `20261008_05_internal_tasks.sql` preparada, não aplicada. Integração MySQL opt-in de FK/duplo aceite/histórico foi acrescentada à suíte existente; `TEST_DB_*` e schema `_test` vazio não estão disponíveis. Próximo passo operacional: conferir baseline e executar as migrations e a suíte somente em banco isolado. Ver [backend-internal-tasks.md](backend-internal-tasks.md). Tarefa seguinte: 21 notificações.
+
+## Checkpoint tarefa 21 — 08/10/2026
+
+Notificações próprias integradas em 2 operações `/api/notifications/me`; convite de equipe emite evento interno na transação com dedupe persistente. `npm test` 90/90; OpenAPI 120 operações válida. Migration `20261008_06_notification_dedupe.sql` preparada, não aplicada. Suíte MySQL opt-in de UNIQUE foi ampliada; falta `TEST_DB_*` e schema `_test` vazio para execução. RF23 permanece parcial: promoções, suporte, planos, cobrança e frontend são módulos posteriores. Ver [backend-notifications.md](backend-notifications.md). Próxima tarefa: 22 fornecedores.
+
+## Checkpoint tarefa 22 — 08/10/2026
+
+Fornecedores integrados em 6 operações administrativas/próprias; `npm test` 94/94, OpenAPI 126 operações válida. O ALTER legado de `nome_cine` já consta no manifest; migration nova `20261008_07_supplier_cnpj.sql` preparada, não aplicada. Cenário MySQL opt-in verifica schema final e UNIQUE normalizado; falta `TEST_DB_*`/schema `_test` vazio. Pré-implantação exige auditar duplicatas legadas de CNPJ. RF25–RF28 permanecem parciais até produtos, estoque, logística e devolução. Ver [backend-suppliers.md](backend-suppliers.md). Próxima tarefa: 23 insumos e equipamentos.
+
+## Checkpoint tarefa 23 — 08/10/2026
+
+Insumos/equipamentos integrados em 14 operações de produto e vínculo fornecedor-local. `npm test` 98/98; OpenAPI 140 operações válida; MySQL opt-in pulou por ausência de `TEST_DB_*` e schema `_test` vazio. Migration `20261008_08_supplier_products.sql` preparada, não aplicada. Antes da aplicação, auditar patrimônios duplicados após trim/uppercase e validar FK/UNIQUE no banco de teste. Saldo só pode mudar no futuro módulo de movimentos; preço não representa custo. RF25/RF26 permanecem parciais. Ver [backend-products.md](backend-products.md). Próxima tarefa: 24.

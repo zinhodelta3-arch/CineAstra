@@ -1,5 +1,17 @@
 # CineAstra — diagnóstico e contrato arquitetural (Prompt 00)
 
+## Atualização tarefa 18 — 08/10/2026
+
+Agendamento integrado a validators/routes/controllers/services/models, ADMIN/2FA, transação/auditoria e OpenAPI. `locais` é o lock estável antes de `salas` e `sessoes`; conflitos RN19 são revalidados no mesmo local com uma hora livre, inclusive salas distintas e meia-noite. Sessão com qualquer item de pedido não muda direitos nem é cancelada. RN20 fica para reserva de usuário, ausente no schema/fluxo atual. A migration base já contém `sessoes`; nenhuma migration nova/aplicada. 76 testes passaram, OpenAPI 95 operações. Aceite MySQL pendente de `_test` isolado. Detalhes em [backend-sessions.md](backend-sessions.md).
+
+## Atualização tarefa 17 — 08/10/2026
+
+Locais, salas e assentos integrados a validators/routes/controllers/services/models, auth ADMIN/2FA, transação/auditoria e OpenAPI. Leituras públicas exigem todos os pais ativos; gestão é aninhada por local/sala. A sala inicia inativa e só ativa com `capacidade` assentos ativos; qualquer sessão congela layout e bloqueia arquivamento, preservando histórico de venda. A migration base já contém tabelas/FKs/UNIQUE; nenhuma migration nova/aplicada. 72 testes passaram e OpenAPI tem 88 operações. Aceite MySQL real pendente de ambiente `_test` isolado. Detalhes em [backend-venues.md](backend-venues.md).
+
+## Atualização tarefa 16 — 08/10/2026
+
+Galeria V4 integrada a model/service/controller/routes e à composição do app, com ADMIN/2FA para escrita, consulta pública restrita a filme ATIVO, promoção de staging para volume privado durável, journal de compensação e sincronização de `filmes.imagem`. Escritas bloqueiam o filme; `tipo_principal` gerada permanece somente leitura. Nenhuma migration nova; V4 existente ainda não foi verificada/aplicada no banco real. Node 24 exigiu definir `req.signal` como propriedade própria no middleware de prazo. Contrato, endpoints e limites em [backend-film-gallery.md](backend-film-gallery.md). 68 testes passaram; aceite SQL depende de banco `_test` isolado.
+
 ## Atualização tarefa 15 — 08/10/2026
 
 Upload ADMIN integrado como staging privado e temporário, sem migration ou mutação de catálogo. Routes -> controller -> service -> storage; Sharp valida/decodifica/reencoda pixels fora das transações MySQL. Autenticação/2FA/limiter existentes precedem Multer; sessão revalidada antes de persistir. Armazenamento local exclusivo de instância única, nomes UUID, limites/quota/TTL/cleanup e prévia autenticada; tarefa 16 promoverá imagens para galeria durável. Config `IMAGE_STAGING_DIR`; detalhes e limites em [backend-image-uploads.md](backend-image-uploads.md). Testes com processamento/filesystem/socket reais; SQL de autenticação continua dependência existente.
@@ -239,3 +251,23 @@ Detalhamento e evidências: [backend-identity.md](backend-identity.md); checkpoi
 - Export próprio paginado por seção, sem segredos. DELETE desativa e cria solicitação RECEBIDA, HTTP202; Location permite acompanhamento ADMIN. Retenção/anonimização e conclusão real dependem de política aprovada. Não converter desativação em alegação de eliminação LGPD. Sem apagar fatos financeiros/consentimentos ou aplicar expurgo90dias a estes.
 - Migration `20261008_01_identity.sql` preexistente reaproveitada; nova `20261008_02_identity_guard.sql` adicionada. Plano88statements, alvo59tabelas com ledger. Nenhuma aplicada; duplicatas normalizadas/principais/fatores e DDL real exigem inspeção prévia.
 - 34 operações de identidade documentadas; 54 testes isolados/HTTP aprovados. Integração MySQL nova testa baseline+upgrade e concorrência, mas foi pulada sem config. Fontes integrais agora estão nos caminhos de docs previstos. Nenhuma funcionalidade de módulos03–15 iniciada.
+
+## Tarefa 19 — equipes e membros (08/10/2026)
+
+O módulo ESM de equipes reutiliza identidade, transação, auditoria, rotas `/api`, DTOs e OpenAPI existentes. `teamModel` concentra SQL parametrizado sobre `equipes`, `equipe_membros`, `sessoes`, `usuarios` e a migration nova `equipe_entradas`; `teamService` controla vínculo, perfil, sessão, convite e decisão; controller/routes/validators preservam os formatos HTTP. A linha da sessão serializa criação de uma equipe ativa; a linha da equipe serializa entradas e mudanças de membros. Uma pendência por equipe/usuário usa UNIQUE gerada. O backend não cria chamados nesta tarefa. Detalhes e impactos: [backend-teams.md](backend-teams.md).
+
+## Tarefa 20 — chamados internos (08/10/2026)
+
+`taskModel`, `taskService`, controller, routes e validators compõem o módulo de chamados internos sob `/api/teams/:id/chamados`. A migration `20261008_05_internal_tasks.sql` adiciona vínculo composto equipe/sessão e eventos de transição sem apagar chamados legados. Transação e locks de equipe/chamado serializam atribuição e aceite; eventos e auditoria são atômicos. Não reutiliza suporte ao cliente. Contrato e limites: [backend-internal-tasks.md](backend-internal-tasks.md).
+
+## Tarefa 21 — notificações (08/10/2026)
+
+`notificationModel`, `notificationService`, controller, routes e validators implementam leitura própria e emissão interna transacional. A migration `20261008_06_notification_dedupe.sql` acrescenta UNIQUE `(id_usuario,dedupe_key)` sem alterar registros legados. O convite de equipe emite `TEAM_INVITATION` na mesma transação e usa o ID da entrada como chave estável; não há criação pública para terceiros. Fontes de promoção, suporte, planos e cobrança continuam nos módulos correspondentes. Contrato e limite de RF23: [backend-notifications.md](backend-notifications.md).
+
+## Tarefa 22 — fornecedores (08/10/2026)
+
+O módulo de fornecedores mantém routes/controller/service/model globais, auth ADMIN/FORNECEDOR e auditoria transacional. Usa o ALTER legado que renomeia `nome_fantasia` para `nome_cine` e migration nova de CNPJ normalizado/único. O cadastro exige conta FORNECEDOR ativa e não transfere propriedade. Local só é relacionável por insumos, equipamentos ou logística; as rotas futuras devem escopar fornecedor e local em conjunto. Contrato: [backend-suppliers.md](backend-suppliers.md).
+
+## Tarefa 23 — insumos e equipamentos (08/10/2026)
+
+`productModel`, `productService`, controller, routes e validators compõem os cadastros em `/api/inputs` e `/api/equipment`. A migration `20261008_08_supplier_products.sql` cria o vínculo operacional `fornecedor_locais` e a chave de patrimônio normalizado. O service deriva o fornecedor da conta, verifica o vínculo ativo antes de escrever e arquiva recursos referenciados logicamente. `preco` permanece string decimal; `quantidade` inicia em zero e é reservada aos movimentos de estoque. Contrato e limites: [backend-products.md](backend-products.md).

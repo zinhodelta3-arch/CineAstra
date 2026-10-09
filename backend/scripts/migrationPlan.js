@@ -35,7 +35,13 @@ export async function migrationPlan() {
         ['20261006_01_infrastructure_events.sql', () => true],
         ['20261008_01_identity.sql', () => true],
         ['20261008_02_identity_guard.sql', () => true],
-        ['20261008_03_catalog_genres.sql', () => true]
+        ['20261008_03_catalog_genres.sql', () => true],
+        ['20261008_04_team_entries.sql', () => true],
+        ['20261008_05_internal_tasks.sql', () => true],
+        ['20261008_06_notification_dedupe.sql', () => true],
+        ['20261008_07_supplier_cnpj.sql', () => true],
+        ['20261008_08_supplier_products.sql', () => true],
+        ['20261008_09_combo_location.sql', () => true]
     ];
     const plan = [];
     for (const [file, filter] of sources) {

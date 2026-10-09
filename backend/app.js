@@ -30,6 +30,43 @@ import { createImageStorage } from './models/imageStorage.js';
 import { createImageUploadService } from './services/imageUploadService.js';
 import { createImageUploadController } from './controllers/imageUploadController.js';
 import { imageUploadRoutes } from './routes/imageUploadRoutes.js';
+import { createFilmGalleryModel } from './models/filmGalleryModel.js';
+import { createGalleryStorage } from './models/galleryStorage.js';
+import { createFilmGalleryService } from './services/filmGalleryService.js';
+import { createFilmGalleryController } from './controllers/filmGalleryController.js';
+import { filmGalleryRoutes } from './routes/filmGalleryRoutes.js';
+import { createVenueModel } from './models/venueModel.js';
+import { createVenueService } from './services/venueService.js';
+import { createVenueController } from './controllers/venueController.js';
+import { venueRoutes } from './routes/venueRoutes.js';
+import { createSessionModel } from './models/sessionModel.js';
+import { createSessionService } from './services/sessionService.js';
+import { createSessionController } from './controllers/sessionController.js';
+import { sessionRoutes } from './routes/sessionRoutes.js';
+import { createTeamModel } from './models/teamModel.js';
+import { createTeamService } from './services/teamService.js';
+import { createTeamController } from './controllers/teamController.js';
+import { teamRoutes } from './routes/teamRoutes.js';
+import { createTaskModel } from './models/taskModel.js';
+import { createTaskService } from './services/taskService.js';
+import { createTaskController } from './controllers/taskController.js';
+import { taskRoutes } from './routes/taskRoutes.js';
+import { createNotificationModel } from './models/notificationModel.js';
+import { createNotificationService } from './services/notificationService.js';
+import { createNotificationController } from './controllers/notificationController.js';
+import { notificationRoutes } from './routes/notificationRoutes.js';
+import { createSupplierModel } from './models/supplierModel.js';
+import { createSupplierService } from './services/supplierService.js';
+import { createSupplierController } from './controllers/supplierController.js';
+import { supplierRoutes } from './routes/supplierRoutes.js';
+import { createProductModel } from './models/productModel.js';
+import { createProductService } from './services/productService.js';
+import { createProductController } from './controllers/productController.js';
+import { productRoutes } from './routes/productRoutes.js';
+import { createComboModel } from './models/comboModel.js';
+import { createComboService } from './services/comboService.js';
+import { createComboController } from './controllers/comboController.js';
+import { comboRoutes } from './routes/comboRoutes.js';
 
 const specification = JSON.parse(readFileSync(new URL('./docs/openapi.json', import.meta.url), 'utf8'));
 
@@ -69,12 +106,26 @@ export function createApp({ config, database, logQueue, retention, sessionProvid
     }
     app.use(identityRoutes(createIdentityController(identity, profile), dependencies));
     app.use(catalogRoutes(createCatalogController(createCatalogService({ model: createCatalogModel(database), identity, mediaHosts: config.catalog?.mediaHosts ?? [] })), dependencies));
+    const staging = createImageStorage(config.imageUpload);
     app.use(imageUploadRoutes(createImageUploadController(createImageUploadService({
-        storage: createImageStorage(config.imageUpload),
+        storage: staging,
         authorize: context => identity.transaction(async c => {
             if ((await identity.activeActor(c, context)).tipo_usuario !== 'ADMIN') throw ApiError.acessoNegado();
         }, context)
     })), dependencies));
+    app.use(filmGalleryRoutes(createFilmGalleryController(createFilmGalleryService({
+        model: createFilmGalleryModel(database), identity,
+        storage: createGalleryStorage({ directory: config.gallery?.directory, staging })
+    })), dependencies));
+    app.use(venueRoutes(createVenueController(createVenueService({ model: createVenueModel(database), identity })), dependencies));
+    app.use(sessionRoutes(createSessionController(createSessionService({ model: createSessionModel(database), identity })), dependencies));
+    const notifications = createNotificationService({ model: createNotificationModel(database), identity });
+    app.use(teamRoutes(createTeamController(createTeamService({ model: createTeamModel(database), identity, notifications })), dependencies));
+    app.use(taskRoutes(createTaskController(createTaskService({ model: createTaskModel(database), identity })), dependencies));
+    app.use(notificationRoutes(createNotificationController(notifications), dependencies));
+    app.use(supplierRoutes(createSupplierController(createSupplierService({ model: createSupplierModel(database), identity })), dependencies));
+    app.use(productRoutes(createProductController(createProductService({ model: createProductModel(database), identity })), dependencies));
+    app.use(comboRoutes(createComboController(createComboService({ model: createComboModel(database), identity })), dependencies));
     // Ponto de composição para módulos futuros e fixtures explícitas de testes.
     registerRoutes?.(app, dependencies);
     app.use((req, res, next) => next(ApiError.naoEncontrado()));

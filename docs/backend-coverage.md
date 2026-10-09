@@ -212,3 +212,41 @@ Implementação integrada não equivale a aceite de MySQL ou providers reais. Ev
 RF08–46 e demais RN/RNF não foram ampliados fora das dependências explícitas desta etapa. Frontend (incluindo RNF14 senha visível/oculta) não alterado. Não há declaração de conformidade LGPD/ECA Digital, SLA ou prontidão produtiva.
 
 **Resultado:** `npm test`54/54; OpenAPI39operações validada; integraçãoMySQL2skips; audit0vulnerabilidades reportadas; sintaxe47JS e diffcheck aprovados. Plano88statements, nenhuma migration aplicada. Próximo aceite exige banco isolado + providers/políticas descritos no handoff.
+
+## Tarefa 19 — equipes e membros
+
+| Requisito | Implementação/endpoint | Evidência executada | Limite / dependência |
+| --- | --- | --- | --- |
+| RF29 | GET `/api/teams` filtra equipes de sessão ativa para colaborador; `POST /entries/requests` solicita entrada | `team.test.js`: sessão cancelada negada, equipe própria e pedido sem membro automático | Disponibilidade e local derivam da sessão; fluxo visual do colaborador não foi alterado |
+| RF33 | `PATCH /api/teams/:id/members/:memberId` define função somente por ADMIN/supervisor próprio | `team.test.js`: autoatribuição e supervisor alheio negados | Atribuições de chamados/tarefas concretas ficam na tarefa 20 |
+| RF37 | Solicitação aprovada ou convite aceito cria membro; histórico em `equipe_entradas` | `team.test.js`: perfis, convite pendente, destinatário, função e duplicate; integração SQL preparada | Migration não aplicada; FK/UNIQUE/locks em MySQL aguardam schema `_test` isolado |
+
+## Tarefa 20 — chamados internos
+
+| Requisito | Implementação/endpoint | Evidência executada | Limite / dependência |
+| --- | --- | --- | --- |
+| RF32 | POST/GET/PATCH/DELETE lógico em `/api/teams/:id/chamados` | `task.test.js`: autor, gestor, validação de campos, cancelamento e histórico | Migration não aplicada; SQL/MySQL isolado pendente |
+| RF39 | Lista com `assigned=me`, detalhe e histórico; função via `/api/teams/:id/members` | `task.test.js`: filtro por responsável e membro ativo | Integração visual de função/tarefa não alterada |
+| RF40 | Atribuir, aceitar, resolver e fechar com máquina de estado | `task.test.js`: transição inválida e duplo aceite; cenário SQL opt-in | Locks e FK composta aguardam execução em MySQL `_test` |
+
+## Tarefa 21 — notificações
+
+| Requisito | Implementação/endpoint | Evidência executada | Limite / dependência |
+| --- | --- | --- | --- |
+| RF23 infraestrutura in-site | GET `/api/notifications/me`, PATCH `/:id/read`; emissão interna com dedupe | `notification.test.js`: IDOR, filtro/paginação, retry, ausência de POST; 90/90 totais | Migration/UNIQUE MySQL não executada sem `_test`; frontend não alterado |
+| RF23 convite de equipe | `teamService.propose` emite `TEAM_INVITATION` na mesma transação | `team.test.js`: um evento por convite; cenário MySQL opt-in preparado | Eventos de promoções, suporte, planos e cobrança dependem dos módulos futuros; não afirmar RF23 completo |
+
+## Tarefa 22 — fornecedores
+
+| Requisito | Implementação/endpoint | Evidência executada | Limite / dependência |
+| --- | --- | --- | --- |
+| RF45 cadastro fornecedor | ADMIN GET/POST/PATCH/DELETE `/api/admin/suppliers`; FORNECEDOR GET `/api/suppliers/me` | `supplier.test.js`: perfil, DTO redigido, CNPJ e `nome_cine`; 94/94 totais | Migration/UNIQUE e schema real aguardam `_test` isolado |
+| RF25–RF28 vínculo fornecedor/local | Conta FORNECEDOR ligada a `fornecedores.id_usuario`; mapa de escopo documentado | Teste bloqueia acesso alheio e role incorreta | Estoque, produtos, logística e devolução pertencem às tarefas 23–27; não declarar RF25–28 completos |
+
+## Tarefa 23 — insumos e equipamentos
+
+| Requisito | Implementação/endpoint | Evidência executada | Limite / dependência |
+| --- | --- | --- | --- |
+| RF25 insumos | `/api/inputs`; `fornecedor_locais`; preço string, saldo inicial zero | `product.test.js`: fornecedor alheio, local, PATCH de saldo/custo rejeitado; 98/98 totais | Movimentos/consumo na tarefa 26; MySQL `_test` ausente |
+| RF26 equipamentos | `/api/equipment`; patrimônio normalizado UNIQUE; arquivamento lógico | `product.test.js`: patrimônio duplicado e referência preservada; OpenAPI 140 operações | Auditoria de duplicatas legadas e ALTER em MySQL `_test` pendentes |
+| RF45 catálogo fornecedor | ADMIN concede/revoga locais; fornecedor opera próprios itens | Testes de perfil, escopo e SQL parametrizado; cenário MySQL opt-in | Estoque/logística, migrations reais e frontend futuros |

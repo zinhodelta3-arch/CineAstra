@@ -11,7 +11,8 @@ export function requestId(req, res, next) {
 export function deadline(timeout) {
     return (req, res, next) => {
         const controller = new AbortController();
-        req.signal = controller.signal;
+        // Node 24 expõe signal por getter somente de leitura no IncomingMessage.
+        Object.defineProperty(req, 'signal', { value: controller.signal, configurable: true });
         const timer = setTimeout(() => {
             controller.abort();
             if (!res.headersSent) next(new ApiError('Tempo de execução excedido', 503, null, 'DEPENDENCY_UNAVAILABLE'));

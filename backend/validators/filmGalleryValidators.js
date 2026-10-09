@@ -7,7 +7,7 @@ const fields = { tipo: z.enum(['CAPA', 'BANNER', 'ALTERNATIVA']), texto_alternat
 export const gallerySchemas = {
     create: z.object({ stagingKey: z.string().regex(IMAGE_KEY), tipo: fields.tipo.default('ALTERNATIVA'), texto_alternativo: fields.texto_alternativo.optional(), ordem: fields.ordem.default(0), principal: fields.principal.default(false) }).strict(),
     patch: z.object(fields).partial().strict().refine(v => Object.keys(v).length > 0),
-    query: z.object({ tipo: fields.tipo.optional(), limit: z.string().regex(/^\d{1,3}$/).transform(Number).pipe(z.number().int().min(1).max(100)).default(20), cursor: imageId.optional() }).strict()
+    query: z.object({ tipo: fields.tipo.optional(), limit: z.string().regex(/^\d{1,3}$/).transform(Number).pipe(z.number().int().min(1).max(100)).default(20), cursor: z.string().regex(/^(0|[0-9]{1,10}:[1-9][0-9]{0,19})$/).refine(v => v === '0' || (Number(v.split(':')[0]) <= 4294967295 && imageId.safeParse(v.split(':')[1]).success)).optional() }).strict()
 };
 export function galleryParams(req, res, next) {
     if (!catalogId.safeParse(req.params.id).success || (req.params.imageId && !imageId.safeParse(req.params.imageId).success)) throw ApiError.validacao('Identificador inválido');

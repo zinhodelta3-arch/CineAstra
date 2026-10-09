@@ -21,7 +21,7 @@ export function createFilmGalleryService({ model, identity, storage }) {
         async list(id, query, admin = false) {
             found(await model.film(id, admin));
             const rows = await model.list(id, query, admin), items = rows.slice(0, query.limit);
-            return { items: items.map(galleryDto), pagination: { limit: query.limit, nextCursor: rows.length > query.limit ? idString(items.at(-1).id_imagem) : null } };
+            return { items: items.map(galleryDto), pagination: { limit: query.limit, nextCursor: rows.length > query.limit ? `${items.at(-1).ordem}:${idString(items.at(-1).id_imagem)}` : null } };
         },
         async create(id, input, context) {
             await identity.transaction(c => lock(c, id, context), context);

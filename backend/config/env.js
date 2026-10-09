@@ -61,6 +61,7 @@ export function validateEnv(env = process.env) {
     if (mediaHosts.some(v => !/^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(v))) errors.add('CATALOG_MEDIA_HOSTS');
     const config = {
         imageUpload: { directory: env.IMAGE_STAGING_DIR || (!production ? fileURLToPath(new URL('../.storage/images', import.meta.url)) : null) },
+        gallery: { directory: env.IMAGE_GALLERY_DIR || (!production ? fileURLToPath(new URL('../.storage/gallery', import.meta.url)) : null) },
         catalog: { mediaHosts },
         mode, production, docsEnabled, origins, trustProxy, publicOrigin, instances, rateLimitStore,
         host: env.HOST ?? '127.0.0.1', port: integer('PORT', 3001, 1, 65535),
@@ -76,7 +77,10 @@ export function validateEnv(env = process.env) {
     };
     if (config.db.database && !/^[a-zA-Z0-9_]+$/.test(config.db.database)) errors.add('DB_NAME');
     if (config.imageUpload.directory && !isAbsolute(config.imageUpload.directory)) errors.add('IMAGE_STAGING_DIR');
+    if (config.gallery.directory && !isAbsolute(config.gallery.directory)) errors.add('IMAGE_GALLERY_DIR');
+    if (config.gallery.directory && config.imageUpload.directory && config.gallery.directory === config.imageUpload.directory) errors.add('IMAGE_GALLERY_DIR');
     if (instances > 1) config.imageUpload.directory = null; // Staging local exige instância única.
+    if (instances > 1) config.gallery.directory = null;
     if (config.db.timeout >= config.httpTimeout) errors.add('DB_TIMEOUT_MS');
     for (const [key, value, max] of [['TERMS_VERSION', config.identity.termsVersion, 50], ['PRIVACY_VERSION', config.identity.privacyVersion, 50], ['IDENTITY_LEGAL_BASIS', config.identity.legalBasis, 100]]) {
         if (value && (!value.trim() || value.length > max)) errors.add(key);
