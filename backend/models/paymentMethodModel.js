@@ -15,8 +15,8 @@ export function createPaymentMethodModel(database) {
         clearPrincipal: (c,owner) => c.execute('UPDATE metodos_pagamento SET principal=FALSE WHERE id_usuario=? AND ativo=TRUE',[owner]),
         setPrincipal: (c,id,principal) => c.execute('UPDATE metodos_pagamento SET principal=? WHERE id_metodo=?',[principal,id]),
         archive: (c,id) => c.execute('UPDATE metodos_pagamento SET ativo=FALSE,principal=FALSE WHERE id_metodo=?',[id]),
-        order: (id,c) => one(c,'SELECT id_pedido,id_usuario,valor_total,status FROM pedidos WHERE id_pedido=? FOR UPDATE',[id]),
-        charge: (id,c) => one(c,'SELECT id_cobranca,id_usuario,valor_devido,valor_multa_aplicada,status FROM assinatura_cobrancas WHERE id_cobranca=? FOR UPDATE',[id]),
+        order: (id,c) => one(c,'SELECT id_pedido,id_usuario,valor_total,status,checkout_expira_em FROM pedidos WHERE id_pedido=? FOR UPDATE',[id]),
+        charge: (id,c) => one(c,'SELECT id_cobranca,id_usuario,valor_devido,valor_multa_aplicada,juros_mora,correcao_ipca,status FROM assinatura_cobrancas WHERE id_cobranca=? FOR UPDATE',[id]),
         intention: (owner,key,c) => one(c,'SELECT id_intencao,id_usuario,chave_idempotencia,id_pedido,id_cobranca,id_metodo,valor,estado FROM pagamento_intencoes WHERE id_usuario=? AND chave_idempotencia=? FOR UPDATE',[owner,key]),
         async insertIntention(c,d) {
             const [r]=await c.execute('INSERT INTO pagamento_intencoes(id_usuario,chave_idempotencia,id_pedido,id_cobranca,id_metodo,valor) VALUES(?,?,?,?,?,?) ON DUPLICATE KEY UPDATE id_intencao=LAST_INSERT_ID(id_intencao)',[d.owner,d.key,d.orderId,d.chargeId,d.methodId,d.amount]);

@@ -3,6 +3,36 @@ import { loadEnvironment, validateEnv } from '../config/env.js';
 import { createDatabase } from '../config/database.js';
 import { migrationPlan } from './migrationPlan.js';
 
+async function verifySeatHistory(connection) {
+    const [[geometry]] = await connection.execute(`SELECT COUNT(*) AS total FROM itens_pedido ip
+        JOIN assentos a ON a.id_assento=ip.id_assento
+        JOIN sessoes s ON s.id_sessao=ip.id_sessao
+        WHERE ip.id_sessao IS NOT NULL AND a.id_sala<>s.id_sala`);
+    if (Number(geometry.total)) throw new Error('Itens historicos apontam assentos de outra sala; saneamento manual obrigatorio');
+}
+
+async function verifySeatBackfill(connection) {
+    const [[missing]] = await connection.execute(`SELECT COUNT(*) AS total FROM itens_pedido ip
+        JOIN pedidos p ON p.id_pedido=ip.id_pedido
+        LEFT JOIN assento_ocupacoes o ON o.id_item=ip.id_item OR
+            (o.id_sessao=ip.id_sessao AND o.id_assento=ip.id_assento AND o.id_pedido=ip.id_pedido)
+        WHERE ip.id_sessao IS NOT NULL AND
+            (p.status IN ('PAGO','FINALIZADO') OR
+             (p.status IN ('EM_ANDAMENTO','AGUARDANDO_PAGAMENTO') AND DATE_ADD(p.data_pedido,INTERVAL 15 MINUTE)>UTC_TIMESTAMP(3)))
+            AND o.id_ocupacao IS NULL`);
+    if (Number(missing.total)) throw new Error('Backfill de ocupacao incompleto; indice historico preservado');
+}
+
+async function verifyTicketHistory(connection) {
+    const [[duplicates]] = await connection.execute('SELECT COUNT(*) AS total FROM (SELECT id_item,tipo FROM tickets GROUP BY id_item,tipo HAVING COUNT(*)>1) repeated');
+    if (Number(duplicates.total)) throw new Error('Tickets historicos repetidos por item/tipo; saneamento manual obrigatorio antes da UNIQUE por unidade');
+}
+
+async function verifySupportHistory(connection) {
+    const [[missing]] = await connection.execute('SELECT COUNT(*) AS total FROM suporte WHERE data_abertura IS NULL');
+    if (Number(missing.total)) throw new Error('Suporte legado sem data_abertura: saneamento manual antes do SLA de cinco dias');
+}
+
 export async function applyPlan(database, plan) {
     return database.withConnection(async connection => {
         const [[lock]] = await connection.execute("SELECT GET_LOCK(CONCAT(DATABASE(), ':cineastra:migrate'), 0) AS acquired");
@@ -26,6 +56,10 @@ export async function applyPlan(database, plan) {
             const applied = new Set(records.map(r => r.name));
             for (const step of plan) {
                 if (applied.has(step.name)) continue;
+                if (step.name === '20261010_16_seat_occupancy.sql:1') await verifySeatHistory(connection);
+                if (step.name === '20261010_16_seat_occupancy.sql:5') await verifySeatBackfill(connection);
+                if (step.name === '20261010_19_tickets.sql:2') await verifyTicketHistory(connection);
+                if (step.name === '20261011_27_support_history.sql:1') await verifySupportHistory(connection);
                 // Marker persistido ANTES do DDL com commit implícito. Falha/crash bloqueia retry.
                 await connection.execute('INSERT INTO schema_migrations (name, checksum, status) VALUES (?, ?, ?)', [step.name, step.checksum, 'RUNNING']);
                 await connection.execute(step.sql);

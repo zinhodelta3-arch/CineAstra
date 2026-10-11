@@ -1,5 +1,101 @@
 # CineAstra — handoff tarefa 15
 
+## Concorrência de suporte — 11/10/2026
+
+Defeito reproduzido em HTTP/MySQL isolado: duas atribuições do mesmo chamado retornavam 200/200 e a última sobrescrevia o responsável. `supportService` agora bloqueia substituição com 409 `SUPPORT_CONFLICT`; `supportModel` atualiza somente quando `id_atendente IS NULL`. O teste usa barreira antes do lock SQL, dois ADMINs autenticados e confere responsável, auditoria, respostas e autoria, inclusive resposta concorrente com tentativa rejeitada de troca. Comandos em `backend`: `node --test tests/support.test.js` → 6/6; `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/runIsolatedMysqlTests.ps1` → 28/28, zero skips (runner exige suíte de integração inteira); `npm run validate:openapi` passou; `git -c core.safecrlf=false diff --check` passou. A inicialização MySQL precisou tolerar falha transitória do `mysqladmin ping` no runner. Reatribuição não tem contrato e permanece ausente; nenhum gateway/frontend foi tocado.
+
+## Aceite de autorização do suporte — 11/10/2026
+
+Em `backend`, `node --test tests/support.test.js` passou 6/6. O runner existente `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/runIsolatedMysqlTests.ps1` executa a integração inteira: 27/27 aprovados, zero skips, em MySQL temporário. Novo teste HTTP/SQL: dois CLIENTES e um ADMIN, 404 para chamado alheio, 422 para IDs de cliente/autor/chamado no corpo, nenhuma escrita indevida, DTOs/listas sem mensagens ou campos internos de outros clientes. ADMIN lê antes da atribuição; escrita exige atribuição, segundo o contrato atual. A primeira execução encontrou apenas saturação do rate limit compartilhado na fixture; uma instância de teste de suporte com janela curta isolou os casos, sem alterar produção. Nenhum defeito de produção ou migration nova. Corrida de live entre ADMINs e operação externa continuam fora deste aceite.
+
+## Aceite isolado da migration 30 — 11/10/2026
+
+Comando em `backend`: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/runIsolatedMysqlTests.ps1` → MySQL 8.0 temporário, 26/26 aprovados, zero skips. A suíte aplicou migrations 01–29, inseriu pedidos pendentes/pagos/cancelados, pagamento e três reservas, aplicou a 30 pelo `applyPlan` oficial e repetiu o plano: ledger único `APPLIED`, checksum igual, dados/relacionamentos preservados. A rota cancelou na base atualizada. Falha injetada após liberar assento, estoque e cupom reverteu pedido, três reservas e recibo; retry real concluiu o cancelamento. Sem alteração de migration ou código de produção. Base legada real e provider externo não foram usados.
+
+## Entrega de cancelamento manual — 11/10/2026
+
+Produto aprovou somente cancelamento pelo titular de `AGUARDANDO_PAGAMENTO` sem ticket nem cobrança despachada/incerta. Rota `POST /api/orders/{orderId}/cancel`, migration 30 para recibo de chave, OpenAPI e testes foram adicionados. `PREPARADA` é neutralizada antes de liberar reservas; pedido e intenção são revalidados sob lock na corrida com o despacho. MySQL temporário: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/runIsolatedMysqlTests.ps1` 25/25 sem skips. Regresso local de checkout/pagamento/pedido/assento: 19/19; `npm run validate:openapi` passou. Estoque/cupom da nova ação têm teste de serviço; rollback de liberação e revenda têm prova MySQL. Gateway real, captura incerta externa, compensação de pago/ticket e upgrade legado seguem não verificados. Aplicar migration 30 em homologação isolada antes de expor a rota. Os registros abaixo são históricos.
+
+## Auditoria de cancelamento solicitado pelo cliente — 11/10/2026
+
+O contrato atual não prevê `POST /api/orders/{id}/cancel`: titular e outro cliente recebem 404. `backend-checkout.md` define somente cancelamento automático após 15 minutos; `backend-refunds.md` define a solicitação de reembolso do pagamento aprovado. Não foi criada uma política de cancelamento antecipado. No teste HTTP/MySQL temporário, outro cliente recebeu 404 ao consultar pedido/tickets e ao pedir reembolso; o job cancelou o checkout vencido uma vez, liberou o assento e permitiu revenda; webhook concorrente após expiração deixou pedido CANCELADO, pagamento APROVADO para revisão, sem ticket nem ocupação. Para pedido pago, a solicitação de arrependimento retornou 202 e retry devolveu o mesmo ID; pedido e ticket permaneceram PAGO/UTILIZADO enquanto compensação está pendente. `runIsolatedMysqlTests.ps1`: 25/25, zero skips; `node --test tests/refund.test.js`: 7/7; `git diff --check` sem erros. Provider HMAC local, sem gateway real. Próxima decisão de produto/jurídico: elegibilidade e efeitos do cancelamento manual, especialmente com pagamento em trânsito; depois implementar rota e provar a corrida correspondente.
+
+## Verificação isolada do fluxo de ingresso — 11/10/2026
+
+Novo cenário em `backend/tests/integration/identity.mysql.test.js`: cotação/aceite e duas compras HTTP concorrentes do mesmo assento resultaram em 201/409; o pedido vencedor expirou e o job o cancelou/liberou; nova compra reservou o assento; dois webhooks de aprovação simultâneos produziram um evento e um ticket; o staff consumiu o ticket uma vez e a repetição retornou 409. Com `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/runIsolatedMysqlTests.ps1`, MySQL 8.0 temporário e schema `_test` novo: 25/25 aprovados, zero skips. Testes locais de checkout, pagamento, assento e ticket: 22/22. Nenhum defeito de produção foi encontrado no fluxo exercitado; nenhuma rota, DTO, migration ou OpenAPI mudou. O gateway é fixture HMAC dentro do teste; não houve captura externa. O cancelamento testado foi por expiração do checkout, não por solicitação do cliente. Não há teste de navegador nem upgrade de base legada.
+
+## Atualização tarefa 51 — 11/10/2026
+
+Auditoria final entregue em `minidocs/CineAstra-Codex-Otimizado/docs/codex/RELATORIO-FINAL.md`; `backend/README.md` atualizado para operação e testes reais. `server.js` passou a propagar providers de streaming e IA injetados; `.env.example` não distribui mais senha/chaves preenchidas. `npm test` 222/222, integração MySQL isolada 24/24, OpenAPI 291 operações válido, plano 169 statements, `npm audit --omit=dev` sem avisos nesta data e `git diff --check` válido. Nenhuma rota, DTO, spec ou migration nova; nenhuma migration em produção. **Produção bloqueada** por integrações reais, dados/contratos oficiais, menores/meia, frontend, upgrade legado, carga e infraestrutura operacional; consultar relatório antes de qualquer implantação.
+
+## Atualização tarefa 50 — 11/10/2026
+
+Regressão comercial concluída no MySQL 8.0 isolado (schema `_test` novo por execução): `npm run test:integration` 24/24, `npm test` 222/222, `npm run validate:openapi` válido e `git diff --check` sem erros. Reexecução independente: na pasta `backend`, `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/runIsolatedMysqlTests.ps1` criou servidor temporário em porta local livre, repetiu 24/24 e o desligou; diretório temporário de diagnóstico permanece no `%TEMP%`. Requer binários MySQL 8.0 instalados no caminho padrão ou `-MySqlBase` informado. O teste real encontrou `START TRANSACTION` incompatível com prepared statements e contagem de cupom obsoleta sob `REPEATABLE READ`; ambos corrigidos. Suíte ampliada para último cupom, rateio/renovação, streaming de participante e webhook tardio/duplicado; fixtures de galeria/ticket/newsletter corrigidas. Nenhuma rota ou migration nova/aplicada em produção. Gateway `sandbox_fixture`, assinatura de mídia e conteúdo legal foram usados somente em teste; integração externa/implantação continuam pendentes. Próxima tarefa: 51, auditoria final e entrega.
+
+## Atualização tarefa 49 — 11/10/2026
+
+Regressão das rotas 01–25: JWT/revogação/2FA, IDOR de cadastros, upload/galerias e horários mantidos; consumidor compartilhado de cotação revisado. A fixture `identity.mysql.test.js` agora aplica o baseline anterior à identidade em ordem cronológica e testa cotação fechada sem conteúdo contratual, seguida de cotação com publicações sintéticas apenas no banco isolado. `npm test` 222/222, OpenAPI válido e `git diff --check` sem erros. Três suítes MySQL puladas sem `TEST_DB_*`; migration 29 e anteriores não aplicadas nesta rodada. Próximo passo: executar integração em schema `_test` vazio, avaliar FK/UNIQUE/concorrência e então tarefa 50.
+
+## Atualização tarefa 48 — 11/10/2026
+
+Quatro rotas ADMIN de relatórios e logs integradas: capturas/estornos por período e escopo, custo e alertas de margem congelados, destinação social explicitamente não calculável e logs redigidos/paginados. Migration 29 preparada, não aplicada; operações RF45 existentes permanecem nos serviços de domínio. `npm test` 222/222 e OpenAPI válidos; 3 suítes MySQL puladas sem `TEST_DB_*`. Aceite SQL/DDL em MySQL `_test` isolado, custos de assinatura e apuração contábil real pendentes. [Contrato e limites](backend-admin-reports.md). Próxima tarefa 49.
+
+## Atualização tarefa 47 — 11/10/2026
+
+Cinco rotas de conteúdo/IA e sumário de assinatura integradas. Conteúdo ADMIN versionado, sem identidade/FAQ empresarial fictícia; pedidos e assinaturas exigem hash e aceite da oferta vigente. Pedido conserva recibo próprio e assinatura conserva seção legal no snapshot. Provider de IA padrão é indisponível e encaminha ao suporte humano. Migration 28 preparada, não aplicada. `npm test` 218/218, OpenAPI válido; 3 suítes MySQL puladas sem `TEST_DB_*`. Pendências: publicar fontes reais, validar DDL/concorrência em `_test`, configurar provider de IA com política de dados e integrar o destaque/sumário no frontend. [Contrato](backend-content-contracts-ai.md). Próxima tarefa 48.
+
+## Atualização tarefa 46 — 11/10/2026
+
+Onze rotas de suporte integradas para CLIENTE próprio e ADMIN: abertura, fila/histórico, mensagens, atribuição, live de dez minutos, resolução e fechamento. Migration 27 acrescenta histórico append-only, prazo de cinco dias e sessão única; preflight bloqueia legado sem data. Reembolso continua no serviço 31, sem CRUD financeiro no suporte. `npm test` 213/213 e OpenAPI válidos; 3 suítes MySQL puladas sem `TEST_DB_*`. Migration 27 não aplicada; CHECK/UNIQUE, concorrência e operação da fila exigem MySQL isolado. [Contrato](backend-support.md). Próxima tarefa 47.
+
+## Atualização tarefa 45 — 11/10/2026
+
+Worker de newsletter integrado ao servidor: claim curto `SKIP LOCKED`, revalidação antes da entrega, backoff/lease e chave estável `id_envio`; provider padrão indisponível não envia nem confirma ficticiamente. Cancelamento ADMIN também interrompe campanha `ENVIANDO`. Webhook bruto autenticado bloqueia bounce/reclamação e migration 26 persiste supressão, ainda não aplicada. `npm test` 207/207, OpenAPI válido; 3 suítes MySQL puladas sem `TEST_DB_*`. Faltam provider real autenticado, conciliação de entrega incerta e teste de concorrência/DDL no MySQL `_test`. [Contrato e limites](backend-newsletter.md). Próxima tarefa 46.
+
+## Atualização tarefa 44 — 11/10/2026
+
+Dez rotas ADMIN de categorias/campanhas integradas. Rascunho exige HTML sanitizado e texto simples; agendamento UTC enfileira apenas inscritos ativos, confirmados e com aceite na categoria ativa, preservando `ENVIADO` em colisão UNIQUE. Categoria arquivada e campanha cancelada encerram pendências. Sem migration nova/aplicada. `npm test` 199/199 e OpenAPI válidos; integração MySQL 3 puladas sem `TEST_DB_*`, incluindo cenário de audiência real preparado. [Contrato](backend-newsletter.md). Próxima tarefa 45: worker e revalidação antes de cada envio; provider real e aceite MySQL ainda pendentes.
+
+## Atualização tarefa 43 — 10/10/2026
+
+Autorização por e-mail, consulta/alteração de categorias, descadastro e reinscrição integrados à newsletter. Migration 25 adiciona finalidade `GESTAO` distinta de `DESCADASTRO`; não aplicada. Tokens não aparecem na API, leitura não consome, opt-out cancela fila e invalida tokens. Testes locais/OpenAPI validados; MySQL `_test`, provider real e worker que revalida envios em curso BLOQUEADOS. [Contrato](backend-newsletter.md). Próxima tarefa 44.
+
+## Atualização tarefa 42 — 10/10/2026
+
+Três rotas públicas de newsletter integradas: opções de aceite/categorias, solicitação genérica e confirmação por token único. Reutiliza tabelas V4, sem migration nova. Testes locais/OpenAPI validados; aceite de MySQL `_test`, provider de e-mail real, publicação dos Termos e recuperação de falha pós-commit BLOQUEADOS. [Contrato e limites](backend-newsletter.md). Próxima tarefa 43: preferências e descadastro.
+
+## Atualização tarefa 41 — 10/10/2026
+
+Nova rota `POST /api/streaming/films/{filmId}/play` integrada ao streaming existente. Benefício contratado, vigência, vínculo ativo, cota paga, suspensão individual, filme e idade são revalidados antes/depois da URL privada; compra avulsa permanece independente. Sem migration nova. Testes locais e OpenAPI validados; aceite MySQL `_test` e provider privado real BLOQUEADOS. [Contrato](backend-streaming.md).
+
+## Atualização tarefa 40 — 10/10/2026
+
+Job horário de cobrança recorrente e atraso integrado. Migration 24 preparada, não aplicada; ciclos e marcos idempotentes, rateio por competência, multa/juros/IPCA IBGE, suspensão no dia 8 e cancelamento após 30 dias. Cobranças próprias agora expõem encargos e total; pagamento usa o total atualizado. Testes locais e OpenAPI passam; aceite MySQL `_test`, gateway/mandato real e aviso externo ficam BLOQUEADOS. [Contrato e limites](backend-subscription-billing.md).
+
+## Atualização tarefa 39 — 10/10/2026
+
+Quatorze operações para convites, participantes, histórico, suspensão/saída, proposta unânime e prévia de cotas. Modo pode ser escolhido na contratação; mudança aprovada vale no próximo ciclo. Migration 23 preparada, não aplicada. Cobranças já emitidas permanecem intactas e consulta mostra apenas cota própria. [Contrato](backend-participation.md). Aceite SQL/gateway BLOQUEADO sem MySQL `_test`/provider; tarefa 40 deve emitir recorrência e tratar atraso.
+
+## Atualização tarefa 38 — 10/10/2026
+
+Onze operações de planos/assinaturas integradas. Contrato mensal/anual congela oferta e cria cobrança `PENDENTE`; webhook autenticado ativa na transação financeira. Pedido de combo mensal é único por assinatura/competência e retorna `SOLICITADO`, sem fingir entrega. Migration 22 preparada/não aplicada. Custos e preços exigem margem líquida de 20% na ativação. Aceite MySQL `_test`, gateway real e retirada física permanecem BLOQUEADOS. [Contrato](backend-plans.md). Próxima tarefa: 39, mantendo pendências de mandato, renovação e catálogo.
+
+## Atualização tarefa 37 — 10/10/2026
+
+Checkout de streaming exige provider privado e congela dias do aluguel (migration 21). Confirmação autenticada do pagamento concede `acessos_streaming` na mesma transação; GET `/api/streaming/my-accesses` lista direitos próprios sem URL privada e POST `/api/streaming/{accessId}/play` revalida dono, vigência e idade para URL de até 60 s. Provider padrão retorna 503. Migration não aplicada; aceite de FKs/UNIQUE/rollback e reprodução em origem privada BLOQUEADO sem MySQL `_test` e provider real. Ver [backend-streaming.md](backend-streaming.md). Próximo módulo: tarefa 38; preservar pendência de revogação por reembolso.
+
+## Atualização tarefa 36 — 10/10/2026
+
+Estado operacional separado em `GET /api/orders/{orderId}` para dono, sem alterar `pedidos.status`; entrada/saída/reentrada passam por histórico `ticket_passagens`. `GET /api/sessions/{sessionId}/attendance` resume atraso e lista passagens para equipe vinculada. `POST /api/tickets/entry` exige saída anterior, validade e nova conferência de meia. Migration 20 preparada, não aplicada. Testes locais/OpenAPI passam; aceite de migration, locks e concorrência em MySQL `_test` BLOQUEADO sem `TEST_DB_*`. Ver [backend-operational-attendance.md](backend-operational-attendance.md). Próximo módulo: tarefa 37, mantendo pendências de meia/gateway.
+
+## Atualização tarefa 35 — 10/10/2026
+
+Emissão de tickets após aprovação do checkout, por unidade, com código opaco, UNIQUE e retirada parcial. Cinco rotas: tickets próprios do pedido, tickets da sessão, validar, consumir e registrar saída; equipe vinculada e ADMIN autorizados. Combo exige sessão e expira 30 min após o término; ingresso expira ao término. Migration 19 preparada/não aplicada. Testes locais e OpenAPI passam; MySQL `_test` ausente, logo aceite de concorrência BLOQUEADO. Meia exige atestação na portaria, mas venda de meia e cota pública continuam pendentes. Ver [backend-tickets.md](backend-tickets.md).
+
+## Atualização tarefa 34 — 10/10/2026
+
+`POST /api/orders/checkout` integra pedido/itens/snapshot, cupom, estoque e ocupação em transação; aprovação autenticada consome uma vez, e job TTL cancela/libera compra avulsa não paga sem ticket. Migration 18 preparada, não aplicada. Testes locais e OpenAPI passam; MySQL `_test`/gateway real ausentes, portanto aceite de concorrência e financeiro BLOQUEADO. Próximo passo: aplicar migrations em schema isolado, testar corridas e aprovação tardia com provider de teste; então tarefa 35 emite tickets. Contrato: [backend-checkout.md](backend-checkout.md).
+
 ## Atualização tarefa 18 — 08/10/2026
 
 **Implementada; aceite SQL BLOQUEADO por ausência de banco de teste isolado.** Criados `backend/models/sessionModel.js`, `services/sessionService.js`, `validators/sessionValidators.js`, `controllers/sessionController.js`, `routes/sessionRoutes.js`, `scripts/generateSessionOpenapi.js`, `tests/session.test.js` e [backend-sessions.md](backend-sessions.md). App, package.json, OpenAPI, teste MySQL opcional e registros de continuidade atualizados. Frontend intacto.
@@ -273,3 +369,19 @@ Precificação integrada em 17 operações de cotação pública/ADMIN, custos, 
 ## Checkpoint tarefa 29 — 09/10/2026
 
 Cinco operações de método próprio tokenizado integradas. Provider injetável com `tokenize/create/consult/cancel/refund/verifyWebhook`; padrão 503, sem gateway real. `prepare` interno verifica obrigação pedido XOR cobrança, pagador, método e chave idempotente persistente antes de despacho externo. `paymentMethod.test.js` cobre IDOR, provider ausente, rejeição de PAN/CVV e chave repetida. `npm test` 122/122; OpenAPI 204 operações; duas suítes MySQL opt-in puladas. Migration `20261009_13_payment_methods.sql` no manifest, não aplicada; auditar múltiplos métodos principais legados antes do ALTER. Aceite bloqueado por ausência de gateway real e MySQL `_test`; webhook/conciliação ficam na tarefa 30. Ver [backend-payment-methods.md](backend-payment-methods.md).
+
+## Checkpoint tarefa 30 — 10/10/2026
+
+Quatro operações de pagamento integradas, incluindo webhook com bytes brutos antes do parser. Despacho marca ENVIADA e insere pagamento PENDENTE antes do gateway; timeout não redispara. Evento verificado único compara valor BRL e transação; aprovação muda pagamento/obrigação junto à auditoria/outbox. Pedido cancelado/mutado entra em revisão sem novo direito. `payment.test.js` cobre timeout, assinatura falsa, duplicidade, ordem e corpo bruto. `npm test` 129/129; OpenAPI 208 operações; duas suítes MySQL puladas. Migration `20261009_14_payments.sql` no manifest, não aplicada. Aceite BLOQUEADO por ausência de gateway real e MySQL `_test`. Ver [backend-payments.md](backend-payments.md).
+
+## Checkpoint tarefa 31 — 10/10/2026
+
+Cinco operações de reembolso/cancelamento integradas. Pedido retorna confirmação de recebimento antes do gateway; janela de sete dias solicita valor integral. Revisão após prazo exige versão dos Termos e fundamento, permitindo valor parcial sem fórmula arbitrária. Timeout/pending não confirmam estorno nem repetem envio; confirmação do provider altera pagamento e registra auditoria/outbox. Cancelamento da assinatura cessa renovação local e abre pedido de reembolso próprio se há pagamento. `compensacao_status=PENDENTE` documenta direitos/recursos ainda não revertidos. `refund.test.js` cobre repetição, pending/falha, parcial, propriedade e cancelamento. `npm test` 136/136; OpenAPI 213 operações; duas suítes MySQL opt-in puladas. Migration `20261010_15_refunds.sql` no manifest, não aplicada. Aceite BLOQUEADO por gateway real, termos publicados/mandato e MySQL `_test`. Ver [backend-refunds.md](backend-refunds.md).
+
+## Checkpoint tarefa 32 — 10/10/2026
+
+Migration 16 e serviço interno de ocupação preparados. Itens históricos permanecem; UNIQUE ativa passa a `assento_ocupacoes`, com backfill e preflight antes do DROP. Reserva de 15 minutos, confirmação com item pago e liberação após cancelamento e invalidação de ticket. Nenhuma rota nova. `npm test` 137/137; OpenAPI válido; duas suítes MySQL opt-in puladas. Cenário MySQL de backfill, último assento e revenda preparado; falta executar no schema `_test` isolado e conectar checkout da tarefa 34. Ver [backend-seat-occupancy.md](backend-seat-occupancy.md).
+
+## Checkpoint tarefa 33 — 10/10/2026
+
+`POST /api/orders/quote` integrado sem persistência. Entrada tipada rejeita preço/status/dono; contexto de sessão, cadeira, local, filme, idade e estoque agregado é verificado antes de usar o motor 28. Compra de streaming passa a exigir custo próprio e preço publicado após migration 17. Resposta inclui linhas, descontos, total, taxa zero e necessidade de responsável; prévia de meia não concede benefício. `npm test` 141/141, OpenAPI 214 operações; duas suítes MySQL opt-in puladas. Cenário MySQL de compra streaming preparado, sem `_test` disponível. Checkout 34 persistirá pedido/itens/snapshot/reservas e revalidará a cotação. Ver [backend-order-cart.md](backend-order-cart.md).

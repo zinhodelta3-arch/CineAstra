@@ -32,7 +32,19 @@
     "generate:openapi:supply": "node scripts/generateSupplyOpenapi.js",
     "generate:openapi:pricing": "node scripts/generatePricingOpenapi.js",
     "generate:openapi:payment-methods": "node scripts/generatePaymentMethodOpenapi.js",
-    "generate:openapi:payments": "node scripts/generatePaymentOpenapi.js"
+    "generate:openapi:payments": "node scripts/generatePaymentOpenapi.js",
+    "generate:openapi:refunds": "node scripts/generateRefundOpenapi.js",
+    "generate:openapi:orders": "node scripts/generateOrderOpenapi.js",
+    "generate:openapi:tickets": "node scripts/generateTicketOpenapi.js",
+    "generate:openapi:streaming": "node scripts/generateStreamingOpenapi.js",
+    "generate:openapi:plans": "node scripts/generatePlanOpenapi.js",
+    "generate:openapi:participation": "node scripts/generateParticipationOpenapi.js",
+    "generate:openapi:newsletter": "node scripts/generateNewsletterOpenapi.js",
+    "generate:openapi:newsletter-campaign": "node scripts/generateNewsletterCampaignOpenapi.js",
+    "generate:openapi:newsletter-delivery": "node scripts/generateNewsletterDeliveryOpenapi.js",
+    "generate:openapi:support": "node scripts/generateSupportOpenapi.js",
+    "generate:openapi:content": "node scripts/generateContentOpenapi.js",
+    "generate:openapi:reports": "node scripts/generateReportOpenapi.js"
   },
   "dependencies": {
     "bcryptjs": "3.0.3",
@@ -45,6 +57,7 @@
     "multer": "^2.4.0",
     "mysql2": "3.24.5",
     "otpauth": "9.5.2",
+    "sanitize-html": "2.18.0",
     "sharp": "0.35.5",
     "swagger-ui-express": "5.0.1",
     "zod": "4.6.5"

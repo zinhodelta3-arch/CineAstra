@@ -20,15 +20,15 @@ test('MySQL real isolado: BEGIN/COMMIT/ROLLBACK, precisão de BIGINT SELECT/inse
     try {
         await database.withConnection(async c => {
             await c.execute(`CREATE TEMPORARY TABLE ${table} (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY, amount DECIMAL(10,2), birth DATE) ENGINE=InnoDB`);
-            await c.execute('START TRANSACTION');
+            await c.beginTransaction();
             const [insert] = await c.execute(`INSERT INTO ${table} (id,amount,birth) VALUES (?, ?, ?)`, ['9007199254740993', '120.01', '2000-01-01']);
             assert.equal(idString(insert.insertId), '9007199254740993');
-            await c.execute('COMMIT');
+            await c.commit();
             const [[row]] = await c.execute(`SELECT id,amount,birth FROM ${table}`);
             assert.deepEqual(row, { id: '9007199254740993', amount: '120.01', birth: '2000-01-01' });
-            await c.execute('START TRANSACTION');
+            await c.beginTransaction();
             await c.execute(`UPDATE ${table} SET amount = ? WHERE id = ?`, ['42.00', '9007199254740993']);
-            await c.execute('ROLLBACK');
+            await c.rollback();
             const [[kept]] = await c.execute(`SELECT amount FROM ${table}`);
             assert.equal(kept.amount, '120.01');
             await c.execute(`DROP TEMPORARY TABLE ${table}`);

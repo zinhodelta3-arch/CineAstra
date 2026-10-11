@@ -1,0 +1,11 @@
+# Tarefa 36 — estado operacional e portaria
+
+`GET /api/orders/{orderId}` exige CLIENTE dono. Responde `financialStatus` de `pedidos.status` e `operationalStatus` calculado, sem gravar um segundo ENUM no pedido. Cada ticket aparece em `items`; streaming fica com estado operacional `null` porque disponibilidade de reprodução tem contrato próprio em `GET /api/streaming/my-accesses`. Pedido não pago recebe estado operacional `null`.
+
+Para ingresso pago, antes do início da sessão é `AGENDADO`; sem entrada a partir do início é `ATRASADO`; última passagem `ENTRADA` é `PARTICIPANDO`; última `SAIDA` é `FINALIZADO`. Retirada de insumo/combo é `AGENDADO` antes da sessão vinculada, `EM_REALIZACAO` durante a janela ou antes do consumo quando não há sessão, `ATRASADO` após a janela e `FINALIZADO` após consumo. Agregação do pedido prioriza `PARTICIPANDO`, `ATRASADO`, `EM_REALIZACAO`, `AGENDADO`, `FINALIZADO`; cada unidade permanece visível separadamente. Datas seguem a interpretação civil UTC já usada por `sessionService.interval`.
+
+Migration 20 cria `ticket_passagens` append-only e importa entrada/saída existentes. `tickets.status=UTILIZADO` indica consumo inicial e não presença atual. Primeira entrada ocorre em `POST /api/tickets/consume`; `POST /api/tickets/exit` exige última passagem ENTRADA; `POST /api/tickets/entry` exige última SAIDA e validade, inclusive para reentrada. Meia exige nova conferência presencial mínima; dados do documento não são armazenados. A linha do ticket recebe `FOR UPDATE` na mesma transação da passagem e auditoria. `tickets.saida_em` conserva a última saída como campo legado; `presence` e o histórico são a fonte de presença atual.
+
+`GET /api/sessions/{sessionId}/attendance` exige ADMIN ou equipe ativa da sessão; retorna resumo `total`, `entered`, `inside`, `exited`, `late` e passagens paginadas sem código ou documento. `late` conta ingressos GERADO após início da sessão. Staff de outra sessão recebe 403. Tickets de retirada de insumo não geram presença.
+
+Migration 20 depende da 19 e não foi aplicada. Antes de produção, conferir tickets legados `UTILIZADO` sem horário e executar backfill, FKs, transições concorrentes e rollback em MySQL `_test` isolado. Os testes locais verificam transições, escopo de sessão e mapeamento, mas não substituem esse aceite SQL.

@@ -35,7 +35,8 @@ test('IDs >2^53 e DECIMAL permanecem strings; rejeita Number arredondado e dinhe
 });
 function fakeDatabase({ fail = '', acquireDelay = 0 } = {}) {
     const calls = [];
-    const raw = { async execute(sql, params) { calls.push({ sql, params }); if (sql === fail) throw new Error('fixture_sql_failure'); return [[]]; }, release() { calls.push({ sql: 'release' }); }, destroy() { calls.push({ sql: 'destroy' }); } };
+    const command = async sql => { calls.push({ sql }); if (sql === fail) throw new Error('fixture_sql_failure'); };
+    const raw = { async execute(sql, params) { calls.push({ sql, params }); if (sql === fail) throw new Error('fixture_sql_failure'); return [[]]; }, beginTransaction: () => command('START TRANSACTION'), commit: () => command('COMMIT'), rollback: () => command('ROLLBACK'), release() { calls.push({ sql: 'release' }); }, destroy() { calls.push({ sql: 'destroy' }); } };
     const pool = { async getConnection() { if (acquireDelay) await new Promise(r => setTimeout(r, acquireDelay)); return raw; }, async end() { calls.push({ sql: 'end' }); } };
     return { database: createDatabase({ timeout: 40 }, pool), calls, raw };
 }

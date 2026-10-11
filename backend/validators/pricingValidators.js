@@ -3,14 +3,14 @@ import { catalogId } from './catalogValidators.js';
 import { ApiError } from '../utils/ApiError.js';
 
 const price=z.string().regex(/^(0|[1-9]\d{0,7})\.\d{2}$/);
-const category=z.enum(['SESSION','INPUT','COMBO','RENTAL','PLAN']);
+const category=z.enum(['SESSION','INPUT','COMBO','RENTAL','PURCHASE','PLAN']);
 const discount=z.number().int().min(0).max(10000);
 const instant=z.string().datetime({offset:true}).transform(v=>new Date(v).toISOString().slice(0,19).replace('T',' '));
 const nonempty=s=>s.refine(x=>Object.keys(x).length>0);
 const costShapes={
     inputs:z.object({custo_receita:price,custo_parceria:price}).strict(),
     sessions:z.object({custo_local_dia:price,custo_exibicao:price}).strict(),
-    films:z.object({custo_streaming_dia:price}).strict(),
+    films:nonempty(z.object({custo_streaming_dia:price.optional(),custo_streaming_compra:price.optional()}).strict()),
     combos:z.object({custo_operacional:price}).strict(),
     plans:z.object({custo_beneficios_mensal:price,custo_beneficios_anual:price,combo_gratis_mes:z.number().int().min(0).max(2147483647)}).strict()
 };

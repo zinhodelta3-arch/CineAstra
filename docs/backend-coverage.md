@@ -1,5 +1,115 @@
 # CineAstra — matriz de cobertura e contratos (Prompt 00)
 
+## Suporte: disputa de atribuição e resposta — 11/10/2026
+
+Dois ADMINs autenticados foram sincronizados antes do lock SQL por barreira de teste em HTTP/MySQL temporário: atribuições concorrentes resultaram em 200/409, com único responsável/auditoria; somente ele respondeu. Resposta simultânea do responsável e tentativa de troca resultaram em 201/409, com autoria/histórico corretos e nenhuma mensagem rejeitada gravada. `support.test.js`: 6/6; runner MySQL isolado: 28/28, zero skips. A segunda atribuição antes da correção sobrescrevia silenciosamente (200/200). Reatribuição explícita não está definida no contrato e não foi implementada.
+
+## Suporte HTTP/MySQL: autorização e projeções — 11/10/2026
+
+`identity.mysql.test.js` confirmou em MySQL temporário que dois CLIENTES listam, consultam e escrevem apenas nas próprias solicitações; acesso a detalhe, histórico, escrita e fechamento alheios retorna 404. Corpos com IDs extras de cliente, autor ou solicitação são rejeitados com 422; autoria e vínculo persistidos vêm da sessão e da rota. Listas/detalhes não incluem texto de mensagem nem campos SQL internos, e a listagem de um cliente não contém assunto ou mensagem do outro. ADMIN pode consultar fila/detalhe/histórico antes da atribuição; só o ADMIN atribuído escreve, conforme contrato existente. `scripts/runIsolatedMysqlTests.ps1`: 27/27, zero skips; `node --test tests/support.test.js`: 6/6. Não se testou provider externo nem toda a concorrência de live da tarefa 46.
+
+## Upgrade isolado da migration 30 — 11/10/2026
+
+`identity.mysql.test.js` aplica as migrations até 29, cria pedidos pendentes/pagos/cancelados com pagamento e reservas sintéticas, aplica a 30 via `applyPlan` e a executa novamente. Ledger `APPLIED` único e checksum correto; pedidos, itens, intenção, pagamento e histórico permanecem ligados. Após o upgrade, a rota manual libera assento, estoque e cupom na mesma transação; falha injetada depois das três liberações restaura todos os estados e não grava recibo. `scripts/runIsolatedMysqlTests.ps1`: 26/26, zero skips. Não houve upgrade de dados reais nem gateway externo.
+
+## Cancelamento manual aprovado parcialmente — 11/10/2026
+
+| Escopo | Evidência atual | Limite |
+| --- | --- | --- |
+| Titular CLIENTE, 404 alheio, chave repetida/conflitante, 409 pago/ENVIADA, `PREPARADA` neutralizada, revenda, concorrência com despacho/expiração e rollback de liberação | `identity.mysql.test.js` em MySQL 8.0 temporário: 25/25, zero skips; `checkout.test.js` e regressões de pagamento/pedido/assento: 19/19; OpenAPI válido | Estoque/cupom no cancelamento verificados por teste de serviço; não houve gateway externo nem upgrade de base legada. Captura incerta é recusada pelo estado `ENVIADA`, sem prova com provider real. |
+
+Os registros abaixo são históricos da validação anterior, quando a rota manual ainda não existia. A decisão atual e as pendências estão em [proposta](backend-manual-order-cancellation-proposal.md).
+
+## Auditoria de cancelamento solicitado pelo cliente — 11/10/2026
+
+| Verificação | Resultado em banco isolado | Lacuna |
+| --- | --- | --- |
+| Cancelamento antecipado pelo titular | Não verificado: `POST /api/orders/{id}/cancel` retorna 404 também ao titular; rota e regra não constam do contrato | Definir estados elegíveis, momento limite, efeito sobre pagamento já despachado e idempotência antes de implementar |
+| Propriedade | Outro CLIENTE recebe 404 na consulta do pedido e dos tickets e no pedido de reembolso do pagamento | Não existe endpoint de cancelamento manual onde provar IDOR dessa ação |
+| Expiração e liberação | Job cancela pedido vencido, libera assento e permite revenda; segunda execução retorna zero cancelamentos | Não prova cancelamento antes do prazo a pedido do cliente |
+| Corrida expiração × aprovação | Pedido vencido termina CANCELADO, pagamento APROVADO para revisão e zero tickets/ocupações ativas | Gateway externo e suas regras de desfazimento não testados |
+| Pedido pago | Titular recebe 202 para arrependimento dentro de sete dias; retry com a mesma chave devolve o mesmo ID; pedido permanece PAGO e ticket UTILIZADO | Estorno externo não executado; compensação/revogação de ticket segue PENDENTE |
+
+Evidência: `identity.mysql.test.js`, `runIsolatedMysqlTests.ps1` 25/25 sem skips; `node --test tests/refund.test.js` 7/7. Nenhuma rota, migration ou OpenAPI alterada.
+
+## Verificação isolada do fluxo de ingresso — 11/10/2026
+
+| Requisito | Entrega / limite | Evidência | Pendência |
+| --- | --- | --- | --- |
+| RF10–RF15, RF34/RF41, RN04 | Jornada HTTP/MySQL de pedido, reserva exclusiva, cancelamento por expiração, revenda, aprovação duplicada, ticket único e consumo único aprovada em schema temporário | `runIsolatedMysqlTests.ps1`: 25/25, zero skips; cenário integrado em `identity.mysql.test.js`; testes locais relacionados 22/22 | Gateway e webhook externos reais, compra/consumo pelo frontend, cancelamento solicitado pelo usuário e homologação com dados legados não verificados |
+
+## Atualização tarefa 51 — 11/10/2026
+
+| Requisito | Entrega / limite | Evidência | Pendência |
+| --- | --- | --- | --- |
+| RF01–RF46 / RN01–RN26 / RNF | Auditoria de backend e contratos entregue; não há aceite de produto em produção | 222/222 testes locais; 24/24 MySQL isolados; OpenAPI 291 operações; plano 169 statements; `npm audit --omit=dev` 0 avisos nesta data; relatório final | Integrações reais, menor/meia, frontend, upgrade legado, carga e operação/infra exigem homologação; ver relatório |
+
+## Atualização tarefa 50 — 11/10/2026
+
+| Requisito | Entrega / limite | Evidência | Pendência |
+| --- | --- | --- | --- |
+| RF10–RF15 / RN comerciais | Assento, estoque e cupom de último uso; revenda histórica, ticket e aprovação tardia/duplicada verificados em MySQL isolado | `identity.mysql.test.js` com migração do baseline, locks/UNIQUE e webhook de fixture; 24/24 integração | Gateway sandbox/real e conciliação externa não homologados |
+| RF16–RF20 | Rateio, renovação e direito streaming de participante com cota paga/suspensa verificados em MySQL; opções de pagamento continuam nos módulos existentes | Suíte MySQL, `subscriptionBilling.test.js`, `streaming.test.js`, `payment.test.js`; 222/222 locais | Provedor de mídia privada, mandato/débito automático e aceites externos reais pendentes |
+
+## Atualização tarefa 49 — 11/10/2026
+
+| Requisito | Entrega / limite | Evidência | Pendência |
+| --- | --- | --- | --- |
+| RF01–RF09 / RNF segurança | Regressão das rotas existentes de identidade/cadastros e consumidores; nenhum contrato HTTP alterado | 222 testes locais, OpenAPI válido; fixture SQL corrigida para migração ordenada e cotação com conteúdo publicado | 3 suítes MySQL puladas sem banco `_test` isolado; validar locks, FK e UNIQUE reais |
+
+## Atualização tarefa 46 — 11/10/2026
+
+| Requisito | Entrega / limite | Evidência | Pendência |
+| --- | --- | --- | --- |
+| RF22 suporte | CLIENTE só próprio; ADMIN atribui, responde e resolve; histórico append-only e notificação | 11 rotas `/api/support` e `/api/admin/support`; `support.test.js`, OpenAPI | FAQ na tarefa 47; migration 27 e IDOR HTTP/MySQL real pendentes |
+| RN03 atendimento/reembolso | Prazo de manifestação de cinco dias; reembolso preserva rotas/serviço 31 | `prazo_resposta_em`, `primeira_resposta_em`; `POST /api/payments/{id}/refunds` existente | Operação real da fila e gateway/estorno ainda dependem de infraestrutura/provider |
+| RN13 excesso/limite | Live único por solicitação, até dez minutos; expiração volta à fila ABERTO | `suporte_atendimentos`, job e testes de expiração | CHECK/UNIQUE e corrida real em MySQL `_test` pendentes |
+
+## Atualização tarefa 45 — 11/10/2026
+
+| Requisito | Entrega / limite | Evidência | Pendência |
+| --- | --- | --- | --- |
+| V4 newsletter: worker | Claim `SKIP LOCKED`, revalidação pré-envio, até 5 tentativas com backoff/lease e fencing; conclusão por fila terminal | `newsletterDelivery.test.js`, job e provider injetável | Locks/crash reais em MySQL `_test`; provedor real com idempotência/conciliação |
+| V4 newsletter: bounce/reclamação | Webhook bruto verificado pelo provider; bloqueio persistente e cancelamento de pendências | `POST /api/newsletter/webhooks/{provider}`, migration 26, OpenAPI | Assinatura real do provider e migration 26 não aplicada |
+
+## Atualização tarefa 44 — 11/10/2026
+
+| Requisito | Entrega / limite | Evidência | Pendência |
+| --- | --- | --- | --- |
+| V4 newsletter: categorias e campanhas | ADMIN gerencia categorias e rascunhos; agenda/cancela campanha, HTML sanitizado e texto simples | 10 rotas `/api/admin/newsletter`; `newsletterCampaign.test.js` e OpenAPI | Seleção real/locks/UNIQUE em MySQL `_test` pendentes; worker/provider na tarefa 45 |
+
+## Atualização tarefa 43 — 10/10/2026
+
+| Requisito | Entrega / limite | Evidência |
+| --- | --- | --- |
+| V4 newsletter: preferências | Token `GESTAO` específico, leitura sem consumo e categorias independentes; ausência=recusa | `/api/newsletter/preferences/view`, `PATCH /api/newsletter/preferences`; testes de finalidade e troca |
+| V4 newsletter: descadastro | Token `DESCADASTRO` só opt-out, fila pendente/falha cancelada, tokens invalidados, CHECK de datas preservada | `POST /api/newsletter/unsubscribe`; teste de opt-out após enfileirar |
+| V4 newsletter: reinscrição | Novo aceite/categorias e nova confirmação, sem reativação por e-mail duplicado | `POST /api/newsletter/resubscribe`; migration 25 não aplicada; provider/MySQL `_test` pendentes |
+
+## Atualização tarefa 42 — 10/10/2026
+
+| Requisito | Entrega / limite | Evidência |
+| --- | --- | --- |
+| V4 newsletter: inscrição | Aceite expresso/versionado e categorias independentes; `PENDENTE` até confirmação | `GET /api/newsletter/options`, `POST /api/newsletter/subscribe`; `newsletter.test.js` |
+| V4 newsletter: confirmação | Token aleatório de 32 bytes, hash SHA-256 binário, finalidade, prazo de 24 h, uso único e lock inscrito→token | `POST /api/newsletter/confirm`; testes de replay/expiração/enumeração |
+| Aceite externo | Sem provider de e-mail ou MySQL `_test` não há prova de entrega/concorrência real | Provider padrão 503; migration V4 existente não aplicada nesta rodada; [limites](backend-newsletter.md) |
+
+## Atualização tarefa 41 — 10/10/2026
+
+| Requisito | Entrega / limite | Evidência |
+| --- | --- | --- |
+| RF16 | Play por filme mediante benefício de catálogo, assinatura vigente e titular/participante ativo | `POST /api/streaming/films/{filmId}/play`; `streaming.test.js` |
+| RN12 | Suspensão e cota do pagador revalidadas; compra avulsa própria continua acessível | Testes de suspensão individual e compra paga; MySQL `_test` pendente |
+| RN22 | Idade verificada e classificação do filme a cada play | Teste de idade, revalidação após assinatura de URL; provider privado real pendente |
+
+## Atualização tarefa 40 — 10/10/2026
+
+| Requisito | Entrega / limite | Evidência |
+| --- | --- | --- |
+| RN12 cobrança | Ciclos mensal/anual e cotas únicos; aviso dia 1, suspensão individual dia 8, cancelamento no dia 31; 2% + 1% pro rata + IPCA/IBGE publicado | Migration 24; `subscriptionBilling.test.js`; cobrança própria e pagamento pelo total atualizado |
+| RN26 cessação | Cancelamento desliga renovação e nova emissão; pagamento tardio não reativa cancelada | Serviço transacional, teste de corrida/cancelamento; gateway/mandato real pendente |
+| Aceite | Backend e contrato OpenAPI integrados; SQL e conciliação externos ainda não aceitos | MySQL `_test`/`TEST_DB_*` e gateway real ausentes; [detalhes](backend-subscription-billing.md) |
+
 ## Atualização tarefa 15 — 08/10/2026
 
 | Requisito | Entrega / limite | Evidência |
@@ -53,10 +163,10 @@ Legenda: **A** ausente na API; **P** componente parcial existente; **I** incompa
 | RF18 A | Recorrência/rateio; assinatura_cobrancas,pagamentos+método tokenizado | POST /subscriptions; GET /subscriptions/:id/charges; POST /payments | C titular/pagador da própria cota | 09/12; recorrência capacidade real, rateio exato, timeout/mandato |
 | RF19 A | Cancelamento/saída; assinatura,participantes,reembolsos | POST /subscriptions/:id/cancel; POST /subscriptions/:id/members/me/leave | Titular cancela; participante sai próprio | 09/12; cessa futuras cobranças, saída ciclo seguinte/reembolso anual |
 | RF20 A | Meios avulsos; metodos_pagamento,pagamentos | POST /payments; GET /payments/:id; POST /payments/webhooks/:provider | C pagador; callback assinatura provider | 09/10; pedido XOR cobrança, método alheio, webhook forjado |
-| RF21 A | IA com encaminhamento; provider+suporte/histórico | POST /assistant/messages; POST /assistant/handoff | C próprio, identidade IA explícita | 14; provider ausente, dados mínimos, handoff humano disponível |
+| RF21 A | Backend integrado; provider real pendente | POST /api/assistant/messages; POST /api/assistant/handoff | CLIENTE, identidade IA explícita; só dúvida textual ao adapter | content.test.js; provider real/política de dados pendentes |
 | RF22 A | FAQ/suporte; conteúdo versionado,suporte+mensagens | GET /faq; GET/POST /support; POST /support/:id/messages | Público FAQ; C dono; AD atendente | 14; histórico, IDOR, prazo de resposta |
 | RF23 A | Eventos/notificações; notificacoes+outbox | GET /notifications/me; PATCH /notifications/:id/read | Todos apenas próprias; criação interna | 05+emissores; evento repetido, leitura alheia, paginação |
-| RF24 A | Institucional/termos; arquivos versionados | GET /institutional/:slug | Público, AD publica versão aprovada | 14; termos reais versionados, sem inventar empresa/parcerias |
+| RF24 A | Publicação versionada integrada; conteúdo real pendente | GET /api/content/{slug}; POST /api/admin/content | Público lê; ADMIN publica versões imutáveis | content.test.js; equipe/história/reputação/parcerias/termos oficiais não fornecidos |
 | RF25 A | Estoque por local; insumos/equipamentos/movimentações | GET /stock; POST /stock/movements | F próprio/local autorizado; S/L vínculo/função; AD | 06/07; IDOR local, saldo negativo concorrente |
 | RF26 A | Cadastros materiais/galerias; insumos,equipamentos | GET/POST /supplies, /equipment; GET/PATCH/DELETE /:id; galeria /supplies/:id/images | F propriedade/local; AD gerência | 06; quantidade não via PATCH livre, referenciado arquiva |
 | RF27 A | Logística/envio/recebimento; logistica,transferências | GET/POST /logistics; POST /logistics/:id/send, /receive, /cancel | F próprio; S/L destino vinculado/função | 07; recebimento repetido, origem/destino reais |
@@ -77,8 +187,8 @@ Legenda: **A** ausente na API; **P** componente parcial existente; **I** incompa
 | RF42 A | Clientes da sessão; usuários,itens,equipe | GET /sessions/:id/customers | L ativo na sessão DTO mínimo | 05/10; vínculo aninhado, minimização de dados |
 | RF43 A | Estoque/solicitação não planejada; movimentos,solicitações | POST /stock/movements; POST /stock/requests | L local vinculado+função | 07; origem adequada, alerta mínimo, atomicidade |
 | RF44 A | Solicitar faltantes; solicitacoes_estoque | GET/POST /stock/requests | L/S local vinculado | 07; XOR, quantidade positiva, id_sessao/local coerentes |
-| RF45 A | Administração cadastros e ações de domínio; todas entidades elegíveis | CRUD /users,/suppliers,/films,/locations,/sessions,/equipment,/supplies,/plans,/teams,/combos,/coupons,/promotions; ações /orders,/tickets,/subscriptions,/support | AD 2FA, invariantes+auditoria, histórico sem DELETE livre | 02–14; RBAC/IDOR/retention e contrato por recurso |
-| RF46 P/A | Logs HTTP parcial; auditoria/relatórios/parâmetros ausentes | GET /admin/logs, /admin/reports/:type; GET/PATCH /admin/financial-parameters | AD 2FA | 01/08/14; redação, estorno no relatório, margem/custo snapshot |
+| RF45 A | Cadastros/ações ADMIN permanecem nos módulos de domínio; tarefa 48 não cria bypass | Rotas ADMIN existentes de usuários, catálogo, fornecedores, operações, preço, planos, suporte e conteúdo | Autorização/regras de cada serviço preservadas; reportRoutes é só leitura | Cobertura de cada domínio e SQL `_test` ainda requerem aceite próprio |
+| RF46 P/A | Relatórios e logs ADMIN integrados; aceite SQL pendente | GET `/api/admin/reports/finance`, `/social-allocation`, `/api/admin/audit-logs`, `/http-logs`; parâmetros existentes em precificação | report.test.js; capturas/estornos separados, snapshot único, redação/paginação | MySQL `_test` para agregações/índices; lucro líquido não disponível |
 
 ## RN -> fluxo -> entidade -> endpoint -> permissão -> teste
 
@@ -100,15 +210,15 @@ Legenda: **A** ausente na API; **P** componente parcial existente; **I** incompa
 | RN14 Fora do escopo | Salários/operações empresariais não implementados | Nenhum endpoint dessas operações | 14/15; revisão de escopo, relatórios não fazem folha/transferência automática |
 | RN15 A | Saldo mínimo/evento dedup de reposição | /stock, /notifications/me; F/S/L vinculados | 07/05; queda até mínimo alerta uma vez, não prometer nunca zerar sem capacidade real |
 | RN16 A | Desconto comum/teto/meia alternativa/custo | /pricing/quotes e checkout; C próprio | 08/10; plano+combo+cupom+promo <=25%, meia não cumulativa, não abaixo custo |
-| RN17 A | Apuração lucro líquido/base/percentual social | GET /admin/reports/social-allocation; AD | 08/14; 5–10% sobre lucro líquido definido, custos completos e termos reais pendentes |
-| RN18 A | Parâmetros versionados e alertas sobre custo | /admin/financial-parameters, margem; AD | 08/14; custo denominador, custo zero, snapshot histórico |
+| RN17 A | Política 5–10% exposta sem valor fictício | GET `/api/admin/reports/social-allocation` retorna NOT_CALCULABLE | report.test.js: amount NULL | Apuração contábil real de lucro líquido e destinação externa pendentes; folha RN14 fora |
+| RN18 A | Alertas vendidos agregados de snapshot; parâmetros ADMIN existentes | `/api/admin/reports/finance`, `/api/pricing` ADMIN | report.test.js e pricing.test.js | MySQL `_test` e cobertura de snapshot legado pendentes |
 | RN19 A | Agenda por local/instantes/lock estável | POST/PATCH /sessions; S responsável/AD | 04; concorrência entre salas, fronteiras/meia-noite e 1h |
 | RN20 A | Reserva de sessão/espaço pelo usuário, não assento | POST /session-reservations (fluxo proposto); C aprovado | 04; 5h, definição comercial/estrutura ausente; não confundir TTL checkout |
 | RN21 A/I | Sessão vinculada/expiração retirada combo | Ticket validate/consume; staff vinculado | 10; até fim+30min, sem sessão associada bloqueia emissão |
 | RN22 A | Classificação/idade/acompanhamento | Checkout/play/entrada; C elegível/responsável | 02/04/10/11; idade não autodeclarada, regra vigente oficial antes de algoritmo |
 | RN23 A/I | Base meia/benefício/cota/evidência compra+portaria | Sessões/quotes/checkout/consume; C/staff | 08/10; saldo transacional visível, >=40%, idosos/regimes separados; revisão base jurídica |
 | RN24 A | Verificação e responsável/supervisão/autorizações | Register, parental controls, checkout/assinatura/play | 02+callers+FE; sem provider não atesta idade; dados não publicidade; enquadramento jurídico |
-| RN25 A | Oferta/empresa/sumário/comprovante/versão | /institutional, quote, checkout e GET /orders/:id/receipt; público/dono | 10/14/FE; dados empresariais reais, conservação comprovante, encargos claros |
+| RN25 A | Backend parcial: aceite/snapshot/recibo integrados | /api/content, /api/orders/quote e checkout/receipt, /api/subscriptions/summary e contratação | checkout.test.js, plan.test.js, content.test.js; OpenAPI | Dados reais, detalhes completos da oferta e exibição destacada no frontend; MySQL `_test` pendente |
 | RN26 A | Cancelar/cessar cobrança/reembolso/ciclo | POST /subscriptions/:id/cancel, /refunds; titular/dono | 09/12; 7 dias integral e anual proporcional conforme termos, corrida renovação |
 
 ## RNF -> fluxo -> entidade/área -> endpoint/escopo -> teste
@@ -301,3 +411,80 @@ RF08–46 e demais RN/RNF não foram ampliados fora das dependências explícita
 | RF18 | `prepare` interno aceita cobrança de assinatura própria e soma multa em centavos | Teste cobrança 19,95 + 2,00 e obrigação XOR | Recorrência, rateio, mandato e cobrança efetiva em tarefas 30/38–39 |
 | RF20 | `prepare` interno aceita pedido próprio e chave idempotente persistente | Teste chave repetida, chave conflitante e método alheio | Endpoint de pagamento/webhook e conciliação na tarefa 30 |
 | RNF22 | API rejeita PAN/CVV/token no corpo; método só recebe token do provider, DTO omite token | Teste schema e provider ausente 503 | Sem adaptador real, não declarar tokenização produtiva concluída |
+
+## Tarefa 30 — pagamentos e conciliação
+
+| Requisito | Implementação/endpoint | Evidência executada | Limite / dependência |
+| --- | --- | --- | --- |
+| RF20 | `POST /api/payments`, `GET /:id`, `POST /:id/reconcile`, webhook bruto assinado | `payment.test.js`: timeout sem novo despacho, falso/duplo/antigo webhook e aprovação tardia; 129/129 totais | Gateway real e MySQL `_test` ausentes; sem aprovação simulada |
+| RN04 | Aprovação de pagamento e pedido/cobrança na mesma transação com evento de auditoria/outbox | Serviço aplica valor/moeda, propriedade, ordem temporal e deduplicação; OpenAPI 208 operações | Rights/checkout completos e verificação SQL concorrente ficam em tarefas posteriores |
+
+## Tarefa 31 — reembolso e estorno
+
+| Requisito | Implementação/endpoint | Evidência executada | Limite / dependência |
+| --- | --- | --- | --- |
+| RN03 | `POST /api/payments/:id/refunds` persiste recebimento e prazo de resposta; `GET /api/refunds/:id`, reconcile e decisão ADMIN | `refund.test.js`: repetido, pendente/timeout, falha, confirmação integral e parcial | Gateway real, monitor de prazo e MySQL `_test`; compensação de direitos ainda PENDENTE |
+| RN26 | `POST /api/subscriptions/:id/cancel` desliga renovação local e abre pedido para cobrança própria paga | Teste titular versus alheio, solicitação única; 136/136 totais, OpenAPI 213 | Mandato externo e cotas de participantes nas tarefas 38–39; proporcional anual depende dos Termos publicados |
+
+## Tarefa 32 — ocupação ativa de assentos
+
+| Requisito | Implementação/endpoint | Evidência executada | Limite / dependência |
+| --- | --- | --- | --- |
+| RF10 | Reserva interna de 15 minutos, confirmação paga e liberação de pedido cancelado; nenhuma rota nova | `seatOccupancy.test.js` e cenário MySQL opt-in de último assento/revenda | Checkout da tarefa 33 e execução MySQL `_test` pendentes |
+| RN19 | UNIQUE ativa por sessão/assento em `assento_ocupacoes`, histórico de itens preservado | Migration 16 com preflight/backfill; plano validado | Migration não aplicada; intervalo entre sessões segue na tarefa 18 |
+
+## Tarefa 33 — carrinho e cotação
+
+| Requisito | Implementação/endpoint | Evidência executada | Limite / dependência |
+| --- | --- | --- | --- |
+| RF10–RF12 | `POST /api/orders/quote` valida ingresso/assento, insumo, combo e streaming ALUGUEL/COMPRA | `order.test.js`: tipo único, quantidade, sala, idade e estoque agregado | Pedido, reserva e ticket na tarefa 34/35; MySQL `_test` pendente |
+| RF13–RF15 | Snapshot informativo de linhas/total, sem criar pedido ou direito | Preço/status/dono enviados pelo cliente são rejeitados | Persistência, estados e finalização na tarefa 34 |
+| RN04 / RN16 | Preço/cupom/desconto do motor 28; taxa explícita zero | Teste de custo/preço de compra streaming; OpenAPI atualizado | Custos reais da categoria PURCHASE e migration 17 pendentes |
+
+## Tarefa 34 — checkout e expiração
+
+| Requisito | Implementação/endpoint | Evidência executada | Limite / dependência |
+| --- | --- | --- | --- |
+| RF15 / RN16 | `POST /api/orders/checkout`; cotação refeita e snapshot/cupom/itens/reservas numa transação | `checkout.test.js`; OpenAPI 215 operações | MySQL `_test` e concorrência real de cupom/estoque/assento pendentes |
+| RN12 | TTL 15 min, job cancela e libera sem ticket; aprovação tardia para revisão | Teste job e evento tardio; gateway fora de locks | Gateway real ausente; estorno da aprovação tardia exige conciliação financeira |
+
+## Tarefa 35 — tickets
+
+| Requisito | Implementação/endpoint | Evidência executada | Limite / dependência |
+| --- | --- | --- | --- |
+| RF13 | Emissão paga por unidade, código opaco e UNIQUE item/tipo/unidade; `GET /api/orders/:orderId/tickets` próprio | `ticket.test.js`: só pago, três unidades, retry único | MySQL `_test` e pedidos legados sem emissão automática |
+| RF34 | `GET /api/sessions/:sessionId/tickets`, `POST /api/tickets/validate` e `/consume` para equipe vinculada | Testes de vínculo, validação sem mutação e duplo consumo | Concorrência SQL real pendente |
+| RF41 / RN23 | Consumo de entrada e `POST /api/tickets/exit`; meia exige atestação mínima na portaria | Testes de saída única e meia | Compra de meia/cota 40% e verificação documental automática ausentes |
+| RN21 | Combo exige sessão; ticket por unidade expira até 30 min após término, inclusive virada do dia | Teste de horário e emissão tardia negada | Fuso civil da sessão não persistido; migration 19 não aplicada |
+
+## Tarefa 36 — operação e presença
+
+| Requisito | Implementação/endpoint | Evidência executada | Limite / dependência |
+| --- | --- | --- | --- |
+| RF14 | `GET /api/orders/{orderId}` retorna estados financeiro e operacional separados, por unidade e agregado | `orderOperationalStatus.test.js` cobre cinco estados, dono e PAGO imutável | Streaming operacional depende da tarefa 37; MySQL `_test` pendente |
+| RF35 | `GET /api/sessions/{sessionId}/attendance` mostra resumo de atrasos e histórico paginado de entrada/saída | `ticket.test.js` cobre histórico, reentrada e staff de outra sessão | Migration 20 não aplicada; contagem/locks reais pendentes |
+| RF41 | `/api/tickets/consume`, `/exit`, `/entry`, `/validate` separam consumo, presença e reconferência de meia | Testes de transição inválida, dupla entrada/saída e meia em reentrada | Prova documental e venda de meia/cota ainda pendentes |
+
+## Tarefa 37 — streaming avulso
+
+| Requisito | Implementação/endpoint | Evidência executada | Limite / dependência |
+| --- | --- | --- | --- |
+| RF08 | Checkout/pagamento existentes concedem `acessos_streaming`; GET `/api/streaming/my-accesses`, POST `/api/streaming/{accessId}/play` | `streaming.test.js`: concessão, dono, pendente, vencido, DTO sem origem | Provider privado real e MySQL `_test` ausentes; acesso legado sem snapshot exige revisão |
+| RN05 | Duração de aluguel congelada em `itens_pedido`, expiração desde evento aprovado; compra sem prazo | Teste de snapshot e SQL de aluguel/compra; precificação proporcional da tarefa 28 | Migration 21 não aplicada |
+| RN22 / V4 | Play revalida verificação de idade, classificação, filme e URL privada; provider assina temporariamente | Testes de idade, 503 e host HTTPS permitido | Menor `ATE_16` sem autorização de play; CDN real e revogação de reembolso pendentes |
+
+## Tarefa 38 — planos e assinaturas
+
+| Requisito | Implementação/endpoint | Evidência executada | Limite / dependência |
+| --- | --- | --- | --- |
+| RF16 | Planos públicos e CRUD ADMIN; contrato com snapshot de catálogo/descontos/combo; pedido mensal único | `plan.test.js`: pendência, snapshot e resgate repetido | Acesso ao catálogo na tarefa 41; entrega física futura; migration 22 não aplicada |
+| RF18 | Contratação mensal/anual `PENDENTE` com cobrança própria; gateway confirmado ativa | `plan.test.js`: sem pagamento e cancelado não ativa; integração do serviço de pagamento | Mandato recorrente, Pix Automático, débito e divisão da tarefa 39/40; gateway real ausente |
+| RN06 | Ativação exige custo mensal/anual e preço com margem líquida mínima de 20% | Validação em centavos no serviço | Custos reais devem ser cadastrados e aceitos em MySQL `_test` |
+
+## Tarefa 39 — participação e rateio
+
+| Requisito | Implementação/endpoint | Evidência executada | Limite / dependência |
+| --- | --- | --- | --- |
+| RF17 | Convite próprio, aceite/recusa, participante persistido, limite com titular e histórico | `participation.test.js`: convites simultâneos, aceite e saída | Migration 23/backfill e lock em MySQL `_test` pendentes |
+| RF19 | Saída própria e suspensão/reativação pelo titular; faturamento passado imutável | Teste de saída e consulta de cobrança própria | Cancelamento integral usa rota existente; job financeiro da tarefa 40 pendente |
+| RN09 | Modo na contratação; mudança unânime agendada; prévia de cotas exatas e aviso in-site | Teste de consentimento, soma de centavos e fatura passada | Emissão idempotente de faturas futuras e cobrança real na tarefa 40 |

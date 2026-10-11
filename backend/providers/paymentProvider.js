@@ -6,5 +6,5 @@ import { ApiError } from '../utils/ApiError.js';
 export function unavailablePaymentProvider() {
     const unavailable = async () => { throw ApiError.indisponivel(); };
     return { name: null, available: false, tokenize: unavailable, create: unavailable, consult: unavailable,
-        cancel: unavailable, refund: unavailable, verifyWebhook: unavailable };
+        cancel: unavailable, refund: unavailable, consultRefund: unavailable, verifyWebhook: unavailable };
 }

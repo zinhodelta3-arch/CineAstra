@@ -20,14 +20,26 @@ import { supplyOperations } from '../routes/supplyRoutes.js';
 import { pricingOperations } from '../routes/pricingRoutes.js';
 import { paymentMethodOperations } from '../routes/paymentMethodRoutes.js';
 import { paymentOperations } from '../routes/paymentRoutes.js';
+import { refundOperations } from '../routes/refundRoutes.js';
+import { orderOperations } from '../routes/orderRoutes.js';
+import { ticketOperations } from '../routes/ticketRoutes.js';
+import { streamingOperations } from '../routes/streamingRoutes.js';
+import { planOperations } from '../routes/planRoutes.js';
+import { participationOperations } from '../routes/participationRoutes.js';
+import { newsletterOperations } from '../routes/newsletterRoutes.js';
+import { newsletterCampaignOperations } from '../routes/newsletterCampaignRoutes.js';
+import { newsletterDeliveryOperations } from '../routes/newsletterDeliveryRoutes.js';
+import { supportOperations } from '../routes/supportRoutes.js';
+import { contentOperations } from '../routes/contentRoutes.js';
+import { reportOperations } from '../routes/reportRoutes.js';
 
 export async function validateOpenapi() {
     const spec = JSON.parse(await readFile(new URL('../docs/openapi.json', import.meta.url), 'utf8'));
     await SwaggerParser.validate(structuredClone(spec));
     const ids = new Set();
     const operations = Object.entries(spec.paths).flatMap(([path, methods]) => Object.entries(methods).map(([method, op]) => ({ path, method, op })));
-    const registered = [...infrastructureOperations, ...identityOperations, ...catalogOperations, ...imageUploadOperations, ...filmGalleryOperations, ...venueOperations, ...sessionOperations, ...teamOperations, ...notificationOperations, ...supplierOperations, ...productOperations, ...comboOperations, ...commerceGalleryOperations, ...inventoryOperations, ...supplyOperations, ...pricingOperations, ...paymentMethodOperations, ...paymentOperations];
-    if (operations.length !== registered.length) throw new Error('OpenAPI diverge das rotas registradas');
+    const registered = [...infrastructureOperations, ...identityOperations, ...catalogOperations, ...imageUploadOperations, ...filmGalleryOperations, ...venueOperations, ...sessionOperations, ...teamOperations, ...taskOperations, ...notificationOperations, ...supplierOperations, ...productOperations, ...comboOperations, ...commerceGalleryOperations, ...inventoryOperations, ...supplyOperations, ...pricingOperations, ...paymentMethodOperations, ...paymentOperations, ...refundOperations, ...orderOperations, ...ticketOperations, ...streamingOperations, ...planOperations, ...participationOperations, ...newsletterOperations, ...newsletterCampaignOperations, ...newsletterDeliveryOperations, ...supportOperations, ...contentOperations, ...reportOperations];
+    if (operations.length !== registered.length) throw new Error(`OpenAPI diverge das rotas registradas: ${operations.length}/${registered.length}`);
     for (const route of registered) {
         const op = spec.paths[route.path]?.[route.method];
         if (!op || op.operationId !== route.operationId || ids.has(op.operationId) || !op.tags?.length || !op.responses || !Array.isArray(op.security)) throw new Error('Contrato OpenAPI inválido');
@@ -37,5 +49,5 @@ export async function validateOpenapi() {
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
     await validateOpenapi();
-    console.info('OpenAPI 3.0.3 válido; infraestrutura, identidade, catálogo, uploads, galerias, locais, sessões, equipes, chamados, notificações, fornecedores, produtos, combos, estoque, suprimentos e precificação conferidos.');
+    console.info('OpenAPI 3.0.3 válido; infraestrutura, identidade, catálogo, uploads, galerias, locais, sessões, equipes, chamados, notificações, fornecedores, produtos, combos, estoque, suprimentos, precificação, pagamentos, reembolsos, carrinho, tickets, streaming, planos, participação, newsletter, campanhas, entrega e suporte conferidos.');
 }

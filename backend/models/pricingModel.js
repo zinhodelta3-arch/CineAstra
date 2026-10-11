@@ -3,7 +3,7 @@ import { idString } from '../utils/dto.js';
 const resources={
     inputs:{table:'insumos',key:'id_insumo',fields:['custo_receita','custo_parceria']},
     sessions:{table:'sessoes',key:'id_sessao',fields:['custo_local_dia','custo_exibicao']},
-    films:{table:'filmes',key:'id_filme',fields:['custo_streaming_dia']},
+    films:{table:'filmes',key:'id_filme',fields:['custo_streaming_dia','custo_streaming_compra']},
     combos:{table:'combos',key:'id_combo',fields:['custo_operacional']},
     plans:{table:'planos',key:'id_plano',fields:['custo_beneficios_mensal','custo_beneficios_anual','combo_gratis_mes']}
 };
@@ -21,6 +21,7 @@ export function createPricingModel(database){
                 INPUT:'SELECT id_insumo AS id,preco AS published,custo_receita,custo_parceria,status,id_local FROM insumos WHERE id_insumo=?',
                 SESSION:'SELECT s.id_sessao AS id,s.preco_inteira AS published,s.custo_local_dia,s.custo_exibicao,s.data,s.horario_inicio,s.horario_fim,s.status,a.capacidade FROM sessoes s JOIN salas a ON a.id_sala=s.id_sala WHERE s.id_sessao=?',
                 RENTAL:'SELECT id_filme AS id,preco_aluguel AS published,custo_streaming_dia,dias_acesso_aluguel,status,disponivel_streaming FROM filmes WHERE id_filme=?',
+                PURCHASE:'SELECT id_filme AS id,preco_compra AS published,custo_streaming_compra,status,disponivel_streaming FROM filmes WHERE id_filme=?',
                 COMBO:'SELECT id_combo AS id,preco AS published,custo_operacional,ativo,id_local FROM combos WHERE id_combo=?',
                 PLAN:'SELECT id_plano AS id,valor_mensal,valor_anual,custo_beneficios_mensal,custo_beneficios_anual,combo_gratis_mes,ativo FROM planos WHERE id_plano=?'
             };
@@ -29,7 +30,7 @@ export function createPricingModel(database){
         comboParts:(id,c=database)=>rows(c,'SELECT ci.id_insumo,ci.quantidade,i.custo_receita,i.custo_parceria,i.status FROM combo_itens ci JOIN insumos i ON i.id_insumo=ci.id_insumo WHERE ci.id_combo=? ORDER BY ci.id_insumo',[id]),
         referenced:(kind,id,c=database)=>{if(!['SESSION','COMBO'].includes(kind))return null;return one(c,`SELECT id_item FROM itens_pedido WHERE ${kind==='SESSION'?'id_sessao':'id_combo'}=? LIMIT 1`,[id]);},
         publishPrice(c,category,id,price,annual=null){
-            const map={INPUT:['insumos','id_insumo','preco'],SESSION:['sessoes','id_sessao','preco_inteira'],RENTAL:['filmes','id_filme','preco_aluguel'],COMBO:['combos','id_combo','preco']};
+            const map={INPUT:['insumos','id_insumo','preco'],SESSION:['sessoes','id_sessao','preco_inteira'],RENTAL:['filmes','id_filme','preco_aluguel'],PURCHASE:['filmes','id_filme','preco_compra'],COMBO:['combos','id_combo','preco']};
             if(category==='PLAN')return c.execute('UPDATE planos SET valor_mensal=?,valor_anual=? WHERE id_plano=?',[price,annual,id]);
             const s=map[category];if(!s)throw new TypeError('Categoria inválida');
             return c.execute(`UPDATE ${s[0]} SET ${s[2]}=? WHERE ${s[1]}=?`,[price,id]);
@@ -42,14 +43,14 @@ export function createPricingModel(database){
         planBenefit:(planId,category,c=database)=>one(c,'SELECT id_plano,categoria,desconto_bps FROM plano_beneficios WHERE id_plano=? AND categoria=?',[planId,category]),
         planBenefits:(planId,c=database)=>rows(c,'SELECT id_plano,categoria,desconto_bps FROM plano_beneficios WHERE id_plano=? ORDER BY categoria',[planId]),
         setPlanBenefit:(c,planId,category,bps)=>c.execute('INSERT INTO plano_beneficios(id_plano,categoria,desconto_bps) VALUES(?,?,?) ON DUPLICATE KEY UPDATE desconto_bps=VALUES(desconto_bps)',[planId,category,bps]),
-        activePlan:(userId,c=database)=>one(c,"SELECT a.id_plano,p.desconto FROM assinaturas a JOIN planos p ON p.id_plano=a.id_plano LEFT JOIN convites_plano v ON v.id_assinatura=a.id_assinatura AND v.id_usuario_convidado=? AND v.status='ACEITO' WHERE (a.id_usuario=? OR v.id_convite IS NOT NULL) AND a.status='ATIVA' AND p.ativo=TRUE AND a.inicio<=UTC_DATE() AND (a.fim IS NULL OR a.fim>=UTC_DATE()) AND EXISTS(SELECT 1 FROM assinatura_cobrancas ac WHERE ac.id_assinatura=a.id_assinatura AND ac.competencia=DATE_FORMAT(UTC_DATE(),'%Y-%m-01') AND ac.status IN ('PAGO','ISENTO')) ORDER BY a.id_assinatura DESC LIMIT 1",[userId,userId]),
+        activePlan:(userId,c=database)=>one(c,"SELECT a.id_plano,p.desconto,a.contrato_snapshot FROM assinaturas a JOIN planos p ON p.id_plano=a.id_plano LEFT JOIN assinatura_participantes ap ON ap.id_assinatura=a.id_assinatura AND ap.id_usuario=? AND ap.status='ATIVO' WHERE (a.id_usuario=? OR ap.id_usuario IS NOT NULL) AND a.status='ATIVA' AND a.inicio<=UTC_DATE() AND (a.fim IS NULL OR a.fim>=DATE_SUB(UTC_DATE(),INTERVAL 7 DAY)) AND (a.suspenso_por_cobranca=FALSE OR (a.tipo_divisao='DIVISAO_IGUAL' AND a.id_usuario<>?)) AND EXISTS(SELECT 1 FROM assinatura_cobrancas ac WHERE ac.id_assinatura=a.id_assinatura AND ac.id_usuario=IF(a.tipo_divisao='TITULAR_PAGA',a.id_usuario,?) AND ac.status IN ('PAGO','ISENTO') AND (a.contrato_snapshot IS NOT NULL OR ac.competencia=DATE_FORMAT(UTC_DATE(),'%Y-%m-01'))) ORDER BY a.id_assinatura DESC LIMIT 1",[userId,userId,userId,userId]),
         coupon:(code,c=database,lock=false)=>one(c,`SELECT id_cupom,codigo,desconto,validade,limite_uso,ativo FROM cupons WHERE codigo=?${lock?' FOR UPDATE':''}`,[code]),
         couponById:(id,c=database,lock=false)=>one(c,`SELECT id_cupom,codigo,desconto,validade,limite_uso,ativo FROM cupons WHERE id_cupom=?${lock?' FOR UPDATE':''}`,[id]),
-        couponUses:(id,c=database)=>one(c,"SELECT COUNT(*) AS total FROM cupom_utilizacoes WHERE id_cupom=? AND (status='CONFIRMADO' OR (status='RESERVADO' AND expira_em>UTC_TIMESTAMP()))",[id]),
+        couponUses:(id,c=database,lock=false)=>one(c,`SELECT COUNT(*) AS total FROM cupom_utilizacoes WHERE id_cupom=? AND (status='CONFIRMADO' OR (status='RESERVADO' AND expira_em>UTC_TIMESTAMP()))${lock?' FOR UPDATE':''}`,[id]),
         coupons:(c=database)=>rows(c,'SELECT id_cupom,codigo,desconto,validade,limite_uso,ativo FROM cupons ORDER BY id_cupom DESC LIMIT 100'),
         async createCoupon(c,d){const [r]=await c.execute('INSERT INTO cupons(codigo,desconto,validade,limite_uso,ativo) VALUES(?,?,?,?,?)',[d.codigo,d.desconto,d.validade,d.limite_uso,d.ativo]);return idString(r.insertId);},
         updateCoupon(c,id,d){const allowed=['codigo','desconto','validade','limite_uso','ativo'];if(Object.keys(d).some(k=>!allowed.includes(k))||!Object.keys(d).length)throw new TypeError('Campos inválidos');return c.execute(`UPDATE cupons SET ${Object.keys(d).map(k=>`${k}=?`).join(',')} WHERE id_cupom=?`,[...Object.values(d),id]);},
-        async recordCoupon(c,orderId,couponId,bps){await c.execute("INSERT INTO cupom_utilizacoes(id_pedido,id_cupom,desconto_bps,status,expira_em) VALUES(?,?,?,'RESERVADO',DATE_ADD(UTC_TIMESTAMP(),INTERVAL 15 MINUTE))",[orderId,couponId,bps]);},
+        async recordCoupon(c,orderId,couponId,bps){await c.execute("INSERT INTO cupom_utilizacoes(id_pedido,id_cupom,desconto_bps,status,expira_em) VALUES(?,?,?,'RESERVADO',COALESCE((SELECT checkout_expira_em FROM pedidos WHERE id_pedido=?),DATE_ADD(UTC_TIMESTAMP(),INTERVAL 15 MINUTE)))",[orderId,couponId,bps,orderId]);},
         couponUsage:(orderId,c=database,lock=false)=>one(c,`SELECT id_pedido,id_cupom,status,expira_em FROM cupom_utilizacoes WHERE id_pedido=?${lock?' FOR UPDATE':''}`,[orderId]),
         setCouponUsage:(c,orderId,status)=>{if(!['CONFIRMADO','LIBERADO'].includes(status))throw new TypeError('Estado inválido');return c.execute('UPDATE cupom_utilizacoes SET status=?,expira_em=NULL WHERE id_pedido=?',[status,orderId]);},
         order:(id,c=database,lock=false)=>one(c,`SELECT id_pedido,id_usuario,status FROM pedidos WHERE id_pedido=?${lock?' FOR UPDATE':''}`,[id]),

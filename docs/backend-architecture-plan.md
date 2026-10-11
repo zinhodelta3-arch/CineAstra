@@ -1,5 +1,69 @@
 # CineAstra — diagnóstico e contrato arquitetural (Prompt 00)
 
+## Upgrade verificado da migration 30 — 11/10/2026
+
+O executor `applyPlan` aplicou a migration 30 após schema 01–29 povoado com pedidos, pagamentos e reservas sintéticos. Reexecução pelo ledger não repetiu DDL. O teste HTTP/MySQL confirmou liberação transacional de assento, estoque e cupom e rollback conjunto quando a última liberação falhou. Evidência: `identity.mysql.test.js`, runner isolado 26/26. Dados legados reais não foram exercitados.
+
+## Cancelamento manual aprovado parcialmente — 11/10/2026
+
+`POST /api/orders/{orderId}/cancel` usa `orderController`/`checkoutService`/`orderModel`, lock do pedido antes de intenções e recibo de idempotência da migration 30. Aceita apenas titular CLIENTE com pedido `AGUARDANDO_PAGAMENTO`, sem ticket e sem intenção despachada/incerta. Marca `PREPARADA` como `CANCELADA` na mesma transação que altera pedido, libera estoque/assento/cupom e audita; despacho e aprovação revalidam o pedido sob lock antes da intenção. Gateway permanece fora da transação. A proposta de cancelar cobrança já enviada e as regras de reembolso/ticket pago continuam pendentes; ver [contrato](backend-manual-order-cancellation-proposal.md).
+
+## Auditoria de cancelamento solicitado pelo cliente — 11/10/2026
+
+As rotas de pedido expõem cotação, checkout e consulta própria; não há operação de cancelamento antecipado solicitada pelo cliente nem política publicada para elegibilidade, prazo ou tratamento de pagamento já despachado. A arquitetura existente cancela checkout vencido no job e recebe pedido de reembolso de pagamento aprovado em `/api/payments/:id/refunds`. Não se adicionou uma transição manual sem esse contrato. O teste HTTP/MySQL isolado agora verifica IDOR, repetição do job e do pedido de reembolso, corrida entre expiração e webhook e ausência de ticket quando a aprovação chega após o vencimento. O reembolso pago conserva `compensacao_status=PENDENTE`; revogação de ticket/direitos continua sem consumidor completo.
+
+## Verificação isolada do fluxo de ingresso — 11/10/2026
+
+O cenário HTTP/MySQL em `backend/tests/integration/identity.mysql.test.js` percorre cotação e aceite, dois checkouts simultâneos para o mesmo assento, expiração/cancelamento do vencedor pelo job, revenda, criação de pagamento, dois webhooks simultâneos de aprovação, emissão e consumo do ticket. Usa os serviços e rotas existentes, sem alteração de contrato, schema ou arquitetura. O provider de pagamento é uma fixture local com assinatura HMAC; não equivale a gateway sandbox externo.
+
+## Atualização tarefa 51 — auditoria final
+
+O servidor agora propaga `streamingProvider` e `assistantProvider` de `startServer` para `createApp`; antes a composição ignorava os adapters injetados. Os defaults indisponíveis continuam bloqueando os fluxos externos sem integração real. O modelo de configuração `.env.example` não contém mais segredos preenchidos. A arquitetura mantém 291 operações no OpenAPI, 169 statements no plano e separação entre controllers/services/models; o aceite MySQL demonstrado é para schema vazio, sem prova de upgrade legado, performance em escala ou produção. Ver `minidocs/CineAstra-Codex-Otimizado/docs/codex/RELATORIO-FINAL.md`.
+
+## Atualização tarefa 50 — regressão comercial em MySQL isolado
+
+O adaptador `database` usa métodos transacionais nativos de mysql2/promise; `START TRANSACTION` via prepared statement falhava em MySQL real. A reserva de cupom agora lê a contagem com lock quando a transação reserva o último uso, evitando snapshot obsoleto sob `REPEATABLE READ`. A suíte SQL foi destravada e cobre concorrência de assento, estoque e cupom, ticket, rateio/renovação, direito streaming e aprovação tardia/duplicada com provider de teste identificado. Nenhum endpoint, DTO, OpenAPI ou DDL foi alterado nesta tarefa. `backend/scripts/runIsolatedMysqlTests.ps1` cria servidor temporário em porta local livre, schema `_test` e credenciais efêmeras; a instância é desligada ao terminar e o serviço MySQL80 existente não é alterado.
+
+## Atualização tarefa 49 — regressão de identidade e cadastros
+
+Rotas existentes mantidas. A revisão cobriu sessão JWT persistida/revogação/2FA, autorização por propriedade e vínculo, staging/galerias e conflitos de horários. O único ajuste foi na suíte MySQL compartilhada: upgrade a partir do prefixo cronológico do plano e publicação sintética isolada para a cotação exigir os três conteúdos contratuais vigentes. Nenhuma migration, rota ou OpenAPI alterados; execução SQL aguarda banco `_test` isolado.
+
+## Atualização tarefa 48 — relatórios e consulta ADMIN
+
+`reportRoutes` expõe somente leitura ADMIN. `reportModel` agrega capturas, estornos confirmados e custos do snapshot do pedido em consultas separadas; `reportService` usa centavos inteiros, marca cobertura ausente e não calcula lucro líquido ou destinação fictícia. Auditoria e logs HTTP têm paginação por BIGINT e projeções mínimas; templates fora do OpenAPI são redigidos. CRUD administrativo continua nos serviços de domínio, sem bypass genérico. Migration 29 apenas indexa períodos, não aplicada. Ver [backend-admin-reports.md](backend-admin-reports.md).
+
+## Atualização tarefa 47 — conteúdo, contratos e IA
+
+`contentRoutes` separa leitura pública e publicação ADMIN de conteúdo imutável por slug/versão (migration 28). `contentService` calcula hash do sumário vigente e o checkout exige aceite antes de reservar; o snapshot do pedido é gravado na mesma transação. Assinaturas reutilizam o snapshot existente com seção legal e um sumário prévio. `assistantService` usa adapter textual sem ferramentas e encaminha à solicitação humana da tarefa 46. Sem dados empresariais/termos reais publicados, contratação falha fechada. Ver [backend-content-contracts-ai.md](backend-content-contracts-ai.md).
+
+## Atualização tarefa 46 — suporte e histórico
+
+`supportRoutes` usa auth por CLIENTE/ADMIN e service com propriedade, atribuição e transações/auditoria. `suporte_mensagens` da migration 27 é histórico append-only, com backfill sem timestamp inventado para resposta legada. `suporte_atendimentos` limita live a dez minutos via CHECK/UNIQUE; job reabre a fila ao expirar, sem resolver a demanda. Prazo e primeira resposta persistidos permitem monitorar cinco dias. Reembolso permanece no serviço 31. Migration não aplicada; MySQL `_test` pendente. Ver [backend-support.md](backend-support.md).
+
+## Atualização tarefa 45 — entrega newsletter
+
+`newsletterDeliveryModel` reivindica uma linha com `SKIP LOCKED` e lease em transação curta; o service revalida elegibilidade e invoca o adaptador fora da transação. Tentativa numérica cerca confirmações atrasadas, backoff limita retries e `id_envio` serve como chave estável quando o provedor permite idempotência. Webhook autenticado registra supressão persistente pela migration 26 e bloqueia envios futuros. O job usa métricas agregadas e fecha no shutdown. Sem provider, fica desativado; sem MySQL `_test`, concorrência e migration seguem sem aceite. Ver [backend-newsletter.md](backend-newsletter.md).
+
+## Atualização tarefa 44 — campanhas newsletter
+
+`newsletterCampaignRoutes` separa gestão ADMIN de categorias/campanhas dos endpoints públicos. O service aplica autorização, auditoria, sanitização HTML e transações; o model usa SQL parametrizado e enfileira somente inscritos ativos, confirmados e com categoria ativa/aceita. A transição rascunho → agendada usa lock categoria → campanha e UNIQUE da fila sem reiniciar envios já enviados. Arquivamento cancela estados elegíveis; o worker da tarefa 45 revalidará antes do envio externo. Sem migration nova; aceite de concorrência em MySQL `_test` pendente. Ver [backend-newsletter.md](backend-newsletter.md).
+
+## Atualização tarefa 43 — 10/10/2026
+
+Newsletter separa autorização `GESTAO` de `DESCADASTRO` por migration 25. Token de posse do e-mail controla leitura/alteração de preferências, opt-out e reinscrição; service transaciona lock inscrito→token e model cancela filas pendentes/falhas. Nenhum GET consome link. Ver [backend-newsletter.md](backend-newsletter.md).
+
+## Atualização tarefa 42 — 10/10/2026
+
+Newsletter usa routes/validators/controllers/service/model separados. `newsletterService` registra aceite versionado, categorias independentes e token aleatório de uso único; `newsletterModel` usa tabelas V4 existentes, com lock inscrito→token. Provider de e-mail ausente falha antes do cadastro. Ver [backend-newsletter.md](backend-newsletter.md).
+
+## Atualização tarefa 41 — 10/10/2026
+
+Streaming por assinatura usa `StreamingService` e `StreamingModel` existentes: consulta contrato, participante, última cota e filme no pedido de play; assina URL privada curta e revalida o direito. Acesso avulso continua ligado ao item comprado. Nenhuma tabela ou migration nova. Ver [backend-streaming.md](backend-streaming.md).
+
+## Atualização tarefa 40 — 10/10/2026
+
+`subscriptionBillingJob` percorre ciclos vencidos e cobranças em atraso. `subscriptionBillingService` mantém regras, arredondamento em centavos e transações; `subscriptionBillingModel` concentra SQL. Migration 24 adiciona ciclos por competência e marcos únicos, sem aplicar em produção. O provider IPCA consulta SIDRA/IBGE; índices ausentes não são inventados. Direitos são filtrados pela suspensão do pagador, preservando itens pagos fora da assinatura. Ver [backend-subscription-billing.md](backend-subscription-billing.md).
+
 ## Atualização tarefa 18 — 08/10/2026
 
 Agendamento integrado a validators/routes/controllers/services/models, ADMIN/2FA, transação/auditoria e OpenAPI. `locais` é o lock estável antes de `salas` e `sessoes`; conflitos RN19 são revalidados no mesmo local com uma hora livre, inclusive salas distintas e meia-noite. Sessão com qualquer item de pedido não muda direitos nem é cancelada. RN20 fica para reserva de usuário, ausente no schema/fluxo atual. A migration base já contém `sessoes`; nenhuma migration nova/aplicada. 76 testes passaram, OpenAPI 95 operações. Aceite MySQL pendente de `_test` isolado. Detalhes em [backend-sessions.md](backend-sessions.md).
@@ -295,3 +359,43 @@ O schema V4 de imagens comerciais já constava no manifest; `commerceGalleryMode
 ## Tarefa 29 — métodos tokenizados e provider (09/10/2026)
 
 `paymentMethodModel`, service, controller, routes e validators gerenciam somente métodos próprios. Token e identificação mascarada vêm de provider externo injetado; o padrão falha com 503. `prepare` registra intenção idempotente antes do despacho de pagamento e verifica obrigação XOR, pagador e método na conexão transacional. Migration `20261009_13_payment_methods.sql` preserva métodos legados sem token e cria a intenção persistente. Chamadas de cobrança e conciliação pertencem à tarefa 30. Contrato: [backend-payment-methods.md](backend-payment-methods.md).
+
+## Tarefa 30 — pagamentos, webhook e conciliação (10/10/2026)
+
+`paymentModel`, service, controller, routes e validators compõem o despacho pendente, consulta própria e webhook de corpo bruto. Intenção e pagamento são persistidos antes da chamada externa; timeout não redispara a captura. Eventos verificados e consultas do provider convergem na mesma transição transacional, com deduplicação e auditoria/outbox. A migration `20261009_14_payments.sql` adiciona vínculo e histórico de eventos. Sem gateway real, permanece fail-closed. Contrato: [backend-payments.md](backend-payments.md).
+
+## Tarefa 31 — reembolso e estorno (10/10/2026)
+
+`refundModel`, service, controller, routes e validators registram pedido imediatamente, desambiguam a janela de sete dias, exigem decisão fundamentada e termos atuais para outros casos e conciliam estorno parcial/integral pelo provider. Cancelamento próprio desativa renovação local e abre solicitação para cobrança própria paga. Migration `20261010_15_refunds.sql` acrescenta histórico e estado parcial. Compensação de direitos permanece explicitamente PENDENTE até contrato de checkout/planos. Contrato: [backend-refunds.md](backend-refunds.md).
+
+## Tarefa 32 — ocupação ativa de assentos (10/10/2026)
+
+`seatOccupancyModel` e `seatOccupancyService` fornecem reserva, confirmação e liberação transacionais para o checkout futuro. A migration `20261010_16_seat_occupancy.sql` separa ocupação ativa do histórico, migra vendas/pendências elegíveis e substitui a UNIQUE antiga após inspeção. Nenhuma rota nova. Contrato: [backend-seat-occupancy.md](backend-seat-occupancy.md).
+
+## Tarefa 33 — carrinho e cotação (10/10/2026)
+
+`orderModel`, `orderService`, controller, routes e validators integram `POST /api/orders/quote` para CLIENTE. A entrada estrita contém recursos/quantidades e benefício solicitado; preço e total vêm do motor 28, com validação de idade, local e disponibilidade agregada. Compra de streaming ganha custo/categoria próprios pela migration 17. O snapshot é apenas devolvido nesta tarefa; persistência e reservas pertencem ao checkout 34. Contrato: [backend-order-cart.md](backend-order-cart.md).
+
+## Tarefa 34 — checkout e expiração (10/10/2026)
+
+`POST /api/orders/checkout` persiste pedido/itens/snapshot e reservas de cupom, estoque e assento em transação única. `checkoutService` valida e consome reservas no evento autenticado de pagamento; `checkoutExpiry` cancela e libera pedidos vencidos sem ticket. Gateway continua fora da transação. Migration 18 acrescenta chave/hash/TTL e índices; não aplicada. Contrato: [backend-checkout.md](backend-checkout.md). Aceite SQL/gateway permanece bloqueado sem ambiente isolado.
+
+## Tarefa 35 — emissão e consumo de tickets (10/10/2026)
+
+`ticketModel`/`ticketService` emitem uma unidade por código opaco na mesma transação da aprovação do checkout. Combo exige sessão de retirada; ingresso e combo têm expiração calculada pelo término da sessão. Rotas de dono, equipe por sessão, validação, consumo e saída são separadas. Migration 19 adiciona unidade/UNIQUE, vínculo, prazo e conferência. Contrato: [backend-tickets.md](backend-tickets.md). Aceite SQL e prova jurídica de meia na compra ainda pendentes.
+
+## Tarefa 36 — operação e presença (10/10/2026)
+
+`orderOperationalStatus` deriva estado por ticket e horário, preservando `pedidos.status` financeiro. `ticket_passagens` registra entradas e saídas em sequência sob lock do ticket; consumo é a primeira entrada, saída e reentrada são transições próprias. `GET /api/orders/{orderId}` mostra estado ao dono; `GET /api/sessions/{sessionId}/attendance` oferece histórico e contagem de atrasos à equipe vinculada. Migration 20 faz backfill de passagens legadas. [Contrato e limites](backend-operational-attendance.md). Aceite MySQL isolado pendente.
+
+## Tarefa 37 — streaming avulso (10/10/2026)
+
+O checkout congela dias do aluguel por item na migration 21. `checkout.confirm` concede `acessos_streaming` após pagamento aprovado, na mesma transação de pedido/tickets; o início vem do evento autenticado do gateway e compra tem expiração NULL. Listagem própria exclui URL privada; play revalida direito e idade e usa provider de origem privada para URL de até 60 segundos. Provider ausente impede checkout de streaming e play. [Contrato e limites](backend-streaming.md). Aceite MySQL/provider real pendente.
+
+## Tarefa 38 — planos, contratação e benefícios (10/10/2026)
+
+`planModel`, service, controller, routes e validators oferecem CRUD administrativo, catálogo público, contratação e pedido único de combo mensal. `pricingService` usa snapshot do desconto contratado; pagamento aprovado pelo gateway ativa a assinatura na mesma transação da cobrança. Migration 22 acrescenta termos congelados, combo de oferta e resgates; não aplicada. [Contrato e limites](backend-plans.md). Aceite MySQL/provider real e entrega física pendentes.
+
+## Tarefa 39 — convites, participantes e rateio (10/10/2026)
+
+`participationModel`/`participationService` mantêm vínculo atual, eventos, convites, consentimento e prévia de cota futura; notification/outbox e auditoria usam a mesma transação. Migration 23 incorpora convites aceitos legados e adiciona proposta de modalidade para próximo ciclo. `pricingModel.activePlan` passa a consultar participante ATIVO e pagador de acordo com modalidade atual. [Contrato e limites](backend-participation.md). Emissão recorrente e atraso pertencem à tarefa 40; aceite MySQL isolado pendente.

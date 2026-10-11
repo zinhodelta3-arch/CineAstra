@@ -6,6 +6,10 @@ import { createApp } from './app.js';
 import { createLogModel } from './models/logModel.js';
 import { createLogQueue } from './services/logService.js';
 import { createLogRetention } from './jobs/logRetention.js';
+import { createCheckoutExpiry } from './jobs/checkoutExpiry.js';
+import {createSubscriptionBillingJob} from './jobs/subscriptionBilling.js';
+import {createNewsletterDeliveryJob} from './jobs/newsletterDelivery.js';
+import {createSupportLiveExpiry} from './jobs/supportLiveExpiry.js';
 import { report } from './utils/telemetry.js';
 
 export async function startServer(config, overrides = {}) {
@@ -15,7 +19,7 @@ export async function startServer(config, overrides = {}) {
     const retention = overrides.retention ?? createLogRetention(model, config.logging);
     const lifecycle = { stopping: false };
     let app;
-    try { app = createApp({ config, database, logQueue: queue, retention, lifecycle, identityProviders: overrides.identityProviders, captchaProvider: overrides.captchaProvider, storeFactory: overrides.storeFactory }); }
+    try { app = createApp({ config, database, logQueue: queue, retention, lifecycle, identityProviders: overrides.identityProviders, captchaProvider: overrides.captchaProvider, paymentProvider: overrides.paymentProvider, streamingProvider: overrides.streamingProvider, newsletterEmailProvider: overrides.newsletterEmailProvider, assistantProvider: overrides.assistantProvider, ipcaProvider: overrides.ipcaProvider, storeFactory: overrides.storeFactory }); }
     catch (error) { await queue.close(); await database.close(); throw error; }
     const server = createServer(app);
     server.requestTimeout = config.httpTimeout;
@@ -26,6 +30,14 @@ export async function startServer(config, overrides = {}) {
         await new Promise((resolve, reject) => { server.once('error', reject); server.listen(config.port, config.host, () => { server.removeListener('error', reject); resolve(); }); });
     } catch (error) { await app.locals.close(); await queue.close(); await database.close(); throw error; }
     retention.start();
+    const checkoutExpiry=createCheckoutExpiry(app.locals.checkout);
+    checkoutExpiry.start();
+    const subscriptionBilling=createSubscriptionBillingJob(app.locals.billing);
+    subscriptionBilling.start();
+    const newsletterDelivery=createNewsletterDeliveryJob(app.locals.newsletterDelivery);
+    if(app.locals.newsletterDeliveryEnabled)newsletterDelivery.start();
+    const supportLiveExpiry=createSupportLiveExpiry(app.locals.support);
+    supportLiveExpiry.start();
     let shutdown;
     return { server, app, lifecycle, close() {
         shutdown ??= (async () => {
@@ -34,7 +46,7 @@ export async function startServer(config, overrides = {}) {
             try {
                 await new Promise(resolve => { server.close(resolve); server.closeIdleConnections(); });
                 let failed = false;
-                for (const close of [() => retention.close(), () => queue.close(), () => app.locals.close(), () => database.close()]) {
+                for (const close of [() => supportLiveExpiry.close(), () => newsletterDelivery.close(), () => subscriptionBilling.close(), () => checkoutExpiry.close(), () => retention.close(), () => queue.close(), () => app.locals.close(), () => database.close()]) {
                     try { await close(); }
                     catch { failed = true; report('shutdown_resource_failed'); }
                 }

@@ -231,155 +231,163 @@
       "id": "30",
       "titulo": "Pagamentos, webhook e conciliação",
       "arquivo": "docs/codex/tasks/30-pagamentos-webhook-e-conciliacao.md",
-      "estado": "PENDENTE",
-      "observacao": ""
+      "estado": "BLOQUEADA",
+      "observacao": "Quatro rotas de pagamento, despacho unico persistido, webhook bruto/verificado e conciliacao com evento unico integrados; 129 testes e OpenAPI 208 operacoes validos. Migration 14 nao aplicada; aceite de assinatura real, timeout gateway e locks MySQL _test bloqueado sem provider/ambiente isolado.",
+      "atualizado_em": "2026-10-10T18:36:24Z"
     },
     {
       "id": "31",
       "titulo": "Reembolso e estorno",
       "arquivo": "docs/codex/tasks/31-reembolso-e-estorno.md",
-      "estado": "PENDENTE",
-      "observacao": ""
+      "estado": "BLOQUEADA",
+      "observacao": "Cinco rotas de reembolso/cancelamento integradas; recebimento imediato, despacho unico, revisao por Termos, parcial e confirmacao apenas pelo gateway. 136 testes e OpenAPI 213 operacoes validos. Migration 15 nao aplicada; aceite bloqueado sem gateway real, MySQL _test e compensacao de direitos/mandato externo.",
+      "atualizado_em": "2026-10-10T18:44:26Z"
     },
     {
       "id": "32",
       "titulo": "Ocupação ativa de assentos",
       "arquivo": "docs/codex/tasks/32-ocupacao-ativa-de-assentos.md",
-      "estado": "PENDENTE",
-      "observacao": ""
+      "estado": "BLOQUEADA",
+      "observacao": "Migration 16, serviço interno e cenário de último assento/revenda implementados. npm test 137/137 e OpenAPI válidos; duas suítes MySQL puladas. Aceite MySQL real bloqueado sem TEST_DB_* e schema _test isolado. Checkout da tarefa 34 deve consumir o serviço.",
+      "atualizado_em": "2026-10-10T18:50:00Z"
     },
     {
       "id": "33",
       "titulo": "Carrinho e cotação de pedido",
       "arquivo": "docs/codex/tasks/33-carrinho-e-cotacao-de-pedido.md",
-      "estado": "PENDENTE",
-      "observacao": ""
+      "estado": "BLOQUEADA",
+      "observacao": "POST /api/orders/quote integrado: entrada estrita, contexto/idade/estoque, motor 28 e PURCHASE com custo proprio. Sem pedido/reserva/ticket nesta tarefa. npm test 141/141 e OpenAPI 214 operacoes validos; migration 17 e aceite SQL pendentes sem TEST_DB_* e schema _test isolado.",
+      "atualizado_em": "2026-10-10T18:59:00Z"
     },
     {
       "id": "34",
       "titulo": "Checkout e expiração de reservas",
       "arquivo": "docs/codex/tasks/34-checkout-e-expiracao-de-reservas.md",
-      "estado": "PENDENTE",
-      "observacao": ""
+      "estado": "BLOQUEADA",
+      "observacao": "POST /api/orders/checkout, transacao pedido/itens/snapshot/reservas, confirmacao autenticada e job TTL integrados. Migration 18 preparada, nao aplicada. Testes locais/OpenAPI validos; aceite de UNIQUE/locks/corridas e gateway real bloqueado sem TEST_DB_* e schema _test isolado.",
+      "atualizado_em": "2026-10-10T19:06:00Z"
     },
     {
       "id": "35",
       "titulo": "Emissão e consumo de tickets",
       "arquivo": "docs/codex/tasks/35-emissao-e-consumo-de-tickets.md",
-      "estado": "PENDENTE",
-      "observacao": ""
+      "estado": "BLOQUEADA",
+      "observacao": "Emissao apos pagamento, codigo opaco por unidade, combo vinculado a sessao e cinco rotas de consulta/validacao/consumo/saida integrados. Migration 19 preparada, nao aplicada; testes locais/OpenAPI validos. Aceite SQL/concorrencia bloqueado sem TEST_DB_* e schema _test isolado. Compra de meia/cota publica continuam pendentes.",
+      "atualizado_em": "2026-10-10T23:49:00Z"
     },
     {
       "id": "36",
       "titulo": "Estados operacionais, entrada e saída",
       "arquivo": "docs/codex/tasks/36-estados-operacionais-entrada-e-saida.md",
-      "estado": "PENDENTE",
-      "observacao": ""
+      "estado": "BLOQUEADA",
+      "observacao": "Backend, testes locais e OpenAPI integrados; aceite de migration 20, backfill e concorrência aguarda MySQL _test isolado.",
+      "atualizado_em": "2026-10-10T23:55:23Z"
     },
     {
       "id": "37",
       "titulo": "Streaming avulso e reprodução",
       "arquivo": "docs/codex/tasks/37-streaming-avulso-e-reproducao.md",
-      "estado": "PENDENTE",
-      "observacao": ""
+      "estado": "BLOQUEADA",
+      "observacao": "Backend de direito avulso e play integrado; testes locais/OpenAPI válidos. Migration 21, MySQL _test e provider privado real pendentes.",
+      "atualizado_em": "2026-10-11T00:00:18Z"
     },
     {
       "id": "38",
       "titulo": "Planos, contratação e benefícios",
       "arquivo": "docs/codex/tasks/38-planos-contratacao-e-beneficios.md",
-      "estado": "PENDENTE",
-      "observacao": ""
+      "estado": "BLOQUEADA",
+      "observacao": "Backend, testes locais e OpenAPI integrados; aceite da migration 22, concorrência e gateway real bloqueado sem MySQL _test/TEST_DB_* e provider. Entrega física do combo pendente."
     },
     {
       "id": "39",
       "titulo": "Convites, participantes e rateio",
       "arquivo": "docs/codex/tasks/39-convites-participantes-e-rateio.md",
-      "estado": "PENDENTE",
-      "observacao": ""
+      "estado": "BLOQUEADA",
+      "observacao": "Backend, testes locais e OpenAPI integrados; aceite de migration 23/backfill/locks e gateway real bloqueado sem MySQL _test/TEST_DB_* e provider. Emissão recorrente de cotas na tarefa 40."
     },
     {
       "id": "40",
       "titulo": "Cobranças, atraso e cancelamento de planos",
       "arquivo": "docs/codex/tasks/40-cobrancas-atraso-e-cancelamento-de-planos.md",
-      "estado": "PENDENTE",
-      "observacao": ""
+      "estado": "BLOQUEADA",
+      "observacao": "Backend, testes locais e OpenAPI integrados; aceite de migration 24/locks em MySQL _test, gateway/mandato real e avisos externos bloqueado sem TEST_DB_* e integrações."
     },
     {
       "id": "41",
       "titulo": "Streaming por assinatura",
       "arquivo": "docs/codex/tasks/41-streaming-por-assinatura.md",
-      "estado": "PENDENTE",
-      "observacao": ""
+      "estado": "BLOQUEADA",
+      "observacao": "Rota, testes locais e OpenAPI integrados; aceite SQL em MySQL _test com migrations 21–24 e provider privado real bloqueado sem TEST_DB_* e integração."
     },
     {
       "id": "42",
       "titulo": "Inscrição e confirmação de newsletter",
       "arquivo": "docs/codex/tasks/42-inscricao-e-confirmacao-de-newsletter.md",
-      "estado": "PENDENTE",
-      "observacao": ""
+      "estado": "BLOQUEADA",
+      "observacao": "Backend, testes locais e OpenAPI integrados; aceite com MySQL _test, provider de e-mail real, Termos publicados e recuperação pós-commit bloqueado."
     },
     {
       "id": "43",
       "titulo": "Preferências e descadastro newsletter",
       "arquivo": "docs/codex/tasks/43-preferencias-e-descadastro-newsletter.md",
-      "estado": "PENDENTE",
-      "observacao": ""
+      "estado": "BLOQUEADA",
+      "observacao": "Backend, testes locais e OpenAPI integrados; aceite de migration 25/locks em MySQL _test, provider de e-mail real e worker de envio bloqueado."
     },
     {
       "id": "44",
       "titulo": "Categorias e campanhas newsletter",
       "arquivo": "docs/codex/tasks/44-categorias-e-campanhas-newsletter.md",
-      "estado": "PENDENTE",
-      "observacao": ""
+      "estado": "BLOQUEADA",
+      "observacao": "Backend, 10 rotas ADMIN, testes locais e OpenAPI integrados; aceite de seleção/locks/UNIQUE exige MySQL _test isolado. Worker 45 integrado; provider real pendente."
     },
     {
       "id": "45",
       "titulo": "Worker de envio newsletter",
       "arquivo": "docs/codex/tasks/45-worker-de-envio-newsletter.md",
-      "estado": "PENDENTE",
-      "observacao": ""
+      "estado": "BLOQUEADA",
+      "observacao": "Worker, webhook autenticado, migration 26, testes locais e OpenAPI integrados; aceite de locks/lease em MySQL _test e provider real com conciliação não disponíveis."
     },
     {
       "id": "46",
       "titulo": "Suporte e histórico",
       "arquivo": "docs/codex/tasks/46-suporte-e-historico.md",
-      "estado": "PENDENTE",
-      "observacao": ""
+      "estado": "BLOQUEADA",
+      "observacao": "Backend, 11 rotas, histórico/migration 27, testes locais e OpenAPI integrados; aceite CHECK/UNIQUE, backfill e concorrência exige MySQL _test isolado."
     },
     {
       "id": "47",
       "titulo": "FAQ, institucional, contratos e IA",
       "arquivo": "docs/codex/tasks/47-faq-institucional-contratos-e-ia.md",
-      "estado": "PENDENTE",
-      "observacao": ""
+      "estado": "BLOQUEADA",
+      "observacao": "Backend, 6 operações, migration 28, aceite versionado e IA isolada integrados; 218 testes locais e OpenAPI válidos. Aceite MySQL _test, conteúdo legal/empresarial real, provider IA e frontend destacados pendentes."
     },
     {
       "id": "48",
       "titulo": "Relatórios e consulta administrativa",
       "arquivo": "docs/codex/tasks/48-relatorios-e-consulta-administrativa.md",
-      "estado": "PENDENTE",
-      "observacao": ""
+      "estado": "BLOQUEADA",
+      "observacao": "Quatro rotas ADMIN, relatório de capturas/estornos/custo snapshot e logs redigidos integrados; 222 testes e OpenAPI válidos. Migration 29 não aplicada; MySQL _test/JSON_TABLE, custos completos e lucro líquido contábil pendentes."
     },
     {
       "id": "49",
       "titulo": "Marco de revisão de identidade e cadastros",
       "arquivo": "docs/codex/tasks/49-marco-de-revisao-de-identidade-e-cadastros.md",
-      "estado": "PENDENTE",
-      "observacao": ""
+      "estado": "CONCLUIDA",
+      "observacao": "Regressão JWT/revogação/2FA/IDOR/upload/galerias/sessões: 222 testes locais e OpenAPI válidos. A dependência SQL foi satisfeita na tarefa 50: 24/24 testes em MySQL 8.0 isolado com baseline e upgrade em ordem. Providers e operação reais seguem fora do aceite de regressão."
     },
     {
       "id": "50",
       "titulo": "Marco de revisão comercial e concorrência",
       "arquivo": "docs/codex/tasks/50-marco-de-revisao-comercial-e-concorrencia.md",
-      "estado": "PENDENTE",
-      "observacao": ""
+      "estado": "CONCLUIDA",
+      "observacao": "Regressão comercial em MySQL 8.0 isolado: 24/24 testes (último assento/estoque/cupom, tickets, aprovação tardia/duplicada, rateio/renovação e streaming), 222/222 unitários e OpenAPI válido. Corrigidos controle de transação mysql2 e leitura atual do cupom; gateway e mídia externos permanecem fixtures, sem prontidão de produção inferida. Sem migration/rota nova."
     },
     {
       "id": "51",
       "titulo": "Auditoria final e entrega",
       "arquivo": "docs/codex/tasks/51-auditoria-final-e-entrega.md",
-      "estado": "PENDENTE",
-      "observacao": ""
+      "estado": "CONCLUIDA",
+      "observacao": "Auditoria e documentação final entregues; produto NÃO aprovado para produção. README e RELATORIO-FINAL.md atualizados; composição dos providers de mídia/IA corrigida e .env.example sem valores de segredo. 222/222 testes locais, 24/24 MySQL isolados, OpenAPI 291 operações válido, plano 169 statements, npm audit sem avisos nesta data. Pendem integrações reais, menores/meia, frontend, upgrade legado, carga e operação."
     }
   ]
 }

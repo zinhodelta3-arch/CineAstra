@@ -46,14 +46,30 @@ export async function migrationPlan() {
         ['20261009_11_supply_logistics.sql', () => true],
         ['20261009_12_pricing.sql', () => true],
         ['20261009_13_payment_methods.sql', () => true],
-        ['20261009_14_payments.sql', () => true]
+        ['20261009_14_payments.sql', () => true],
+        ['20261010_15_refunds.sql', () => true],
+        ['20261010_16_seat_occupancy.sql', () => true],
+        ['20261010_17_streaming_purchase_pricing.sql', () => true],
+        ['20261010_18_checkout_expiry.sql', () => true],
+        ['20261010_19_tickets.sql', () => true],
+        ['20261010_20_ticket_passages.sql', () => true],
+        ['20261010_21_streaming_rental_snapshot.sql', () => true],
+        ['20261010_22_plan_contracts.sql', () => true],
+        ['20261011_23_plan_participants.sql', () => true],
+        ['20261011_24_subscription_billing.sql', () => true],
+        ['20261011_25_newsletter_management.sql', () => true],
+        ['20261011_26_newsletter_delivery_suppression.sql', () => true],
+        ['20261011_27_support_history.sql', () => true],
+        ['20261011_28_content_contracts.sql', () => true],
+        ['20261011_29_admin_reports.sql', () => true],
+        ['20261011_30_order_manual_cancellation.sql', () => true]
     ];
     const plan = [];
     for (const [file, filter] of sources) {
         const text = await readFile(new URL(`../migrations/${file}`, import.meta.url), 'utf8');
         let index = 0;
         for (const sql of splitSql(text).filter(filter)) {
-            if (!/^(CREATE TABLE|CREATE INDEX|ALTER TABLE|INSERT INTO)\b/i.test(sql) || sql.includes(' ?')) throw new Error('Statement não aprovado');
+            if (!/^(CREATE TABLE|CREATE INDEX|ALTER TABLE|INSERT INTO|UPDATE suporte SET)\b/i.test(sql) || sql.includes(' ?')) throw new Error('Statement não aprovado');
             plan.push({ name: `${file}:${++index}`, sql, checksum: createHash('sha256').update(sql).digest('hex') });
         }
     }

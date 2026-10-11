@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { randomBytes } from 'node:crypto';
+import { createHmac, randomBytes } from 'node:crypto';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -23,6 +23,18 @@ import { unavailableIdentityProviders } from '../../providers/identityProviders.
 import { createImageStorage } from '../../models/imageStorage.js';
 import { createInventoryModel } from '../../models/inventoryModel.js';
 import { createInventoryService } from '../../services/inventoryService.js';
+import { createSeatOccupancyService } from '../../services/seatOccupancyService.js';
+import { createTicketModel } from '../../models/ticketModel.js';
+import { createPricingModel } from '../../models/pricingModel.js';
+import { createPricingService } from '../../services/pricingService.js';
+import { createSubscriptionBillingModel } from '../../models/subscriptionBillingModel.js';
+import { createSubscriptionBillingService } from '../../services/subscriptionBillingService.js';
+import { createStreamingModel } from '../../models/streamingModel.js';
+import { createStreamingService } from '../../services/streamingService.js';
+import { createPaymentModel } from '../../models/paymentModel.js';
+import { createPaymentService } from '../../services/paymentService.js';
+import { createCheckoutService } from '../../services/checkoutService.js';
+import { createOrderModel } from '../../models/orderModel.js';
 
 loadEnvironment();
 const enabled = process.env.RUN_IDENTITY_MYSQL_TESTS === 'true';
@@ -39,11 +51,31 @@ test('MySQL identidade real: baseline vazio + upgrade, HTTP, constraints e conco
     const [[count]] = await database.execute('SELECT COUNT(*) AS total FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()');
     assert.equal(Number(count.total), 0, 'Schema deve estar vazio. Suíte não apaga nem reutiliza dados existentes.');
     const plan = await migrationPlan();
-    await applyPlan(database, plan.filter(p => !p.name.startsWith('20261008')));
+    const identityUpgrade = plan.findIndex(p => p.name.startsWith('20261008_01_identity.sql:'));
+    assert.ok(identityUpgrade > 0, 'Plano deve conter a migration de identidade após o baseline');
+    await applyPlan(database, plan.slice(0, identityUpgrade));
     const password = 'Isolated!Fixture123';
     await database.execute('INSERT INTO usuarios (nome,email,cpf,senha,tipo_usuario,status,data_nascimento) VALUES (?,?,?,?,?,?,?)', ['Legacy Fixture', ' Legacy@Example.invalid ', '529.982.247-25', await hashPassword(password, 10), 'CLIENTE', 'ATIVO', '2000-01-01']);
-    await applyPlan(database, plan);
-    await applyPlan(database, plan); // Reexecução lê ledger; não repete DDL.
+    // Historico anterior ao upgrade: pago ocupa; cancelado permanece como item, mas nao ocupa.
+    const [oldFilm] = await database.execute("INSERT INTO filmes(titulo,duracao,status) VALUES('Filme historico',60,'INATIVO')");
+    const [oldLocation] = await database.execute("INSERT INTO locais(nome,cidade,estado,status) VALUES('Local historico','SP','SP','INATIVO')");
+    const [oldRoom] = await database.execute('INSERT INTO salas(id_local,nome,capacidade) VALUES(?,?,2)',[String(oldLocation.insertId),'Historica']);
+    const [paidSeat] = await database.execute("INSERT INTO assentos(id_sala,fileira,numero) VALUES(?,'H',1)",[String(oldRoom.insertId)]);
+    const [cancelledSeat] = await database.execute("INSERT INTO assentos(id_sala,fileira,numero) VALUES(?,'H',2)",[String(oldRoom.insertId)]);
+    const [oldSession] = await database.execute("INSERT INTO sessoes(id_filme,id_sala,data,horario_inicio,horario_fim,preco_inteira,status) VALUES(?,?,'2026-01-01','10:00','11:00','20.00','ENCERRADA')",[String(oldFilm.insertId),String(oldRoom.insertId)]);
+    const [[legacyUser]] = await database.execute('SELECT id_usuario FROM usuarios ORDER BY id_usuario LIMIT 1');
+    for (const [status,seat] of [['PAGO',paidSeat.insertId],['CANCELADO',cancelledSeat.insertId]]) {
+        const [oldOrder] = await database.execute('INSERT INTO pedidos(id_usuario,status,valor_total) VALUES(?,?,?)',[String(legacyUser.id_usuario),status,'20.00']);
+        await database.execute('INSERT INTO itens_pedido(id_pedido,id_sessao,id_assento,valor_unitario,subtotal) VALUES(?,?,?,?,?)',[String(oldOrder.insertId),String(oldSession.insertId),String(seat),'20.00','20.00']);
+    }
+    const manualUpgrade = plan.findIndex(p => p.name.startsWith('20261011_30_order_manual_cancellation.sql:'));
+    assert.ok(manualUpgrade > identityUpgrade, 'Migration 30 deve suceder o schema comercial');
+    await applyPlan(database, plan.slice(0,manualUpgrade));
+    await applyPlan(database, plan.slice(0,manualUpgrade)); // Ledger anterior não repete DDL.
+    const [[backfill]] = await database.execute('SELECT COUNT(*) AS total FROM assento_ocupacoes WHERE id_sessao=?',[String(oldSession.insertId)]);
+    assert.equal(Number(backfill.total),1);
+    const [[historical]] = await database.execute('SELECT COUNT(*) AS total FROM itens_pedido WHERE id_sessao=?',[String(oldSession.insertId)]);
+    assert.equal(Number(historical.total),2);
     const model = createIdentityModel(database);
     const legacy = await model.byEmail('legacy@example.invalid');
     assert.ok(legacy); assert.equal(legacy.cpf, '529.982.247-25');
@@ -69,6 +101,27 @@ test('MySQL identidade real: baseline vazio + upgrade, HTTP, constraints e conco
         await request(app).get('/api/users/me').set('Authorization', `Bearer ${auth.accessToken}`).expect(401);
         auth = await identity.login({ email: 'legacy@example.invalid', password });
     });
+    await t.test('carrinho SQL: preço do servidor e compra streaming sem pedido/ticket',async()=>{
+        await database.execute("INSERT INTO verificacoes_idade(id_usuario,faixa_etaria,referencia_provedor,verificado_em,expiracao) VALUES(?,'MAIOR_16','fixture-sql',UTC_TIMESTAMP(3),DATE_ADD(UTC_TIMESTAMP(3),INTERVAL 1 DAY))",[String(legacy.id_usuario)]);
+        const [film]=await database.execute("INSERT INTO filmes(titulo,duracao,disponivel_streaming,preco_compra,custo_streaming_compra) VALUES('Streaming SQL',60,TRUE,'16.00','10.00')");
+        const input={lines:[{kind:'STREAMING',id:String(film.insertId),mode:'COMPRA',quantity:1}]};
+        const authHeader={Authorization:`Bearer ${auth.accessToken}`};
+        const [[before]]=await database.execute('SELECT COUNT(*) AS total FROM pedidos');
+        await request(app).post('/api/orders/quote').set(authHeader).send({...input,total:'0.01'}).expect(422);
+        await request(app).post('/api/orders/quote').set(authHeader).send(input).expect(503);
+        // Publicações sintéticas na base isolada: o contrato passou a exigir os três slugs oficiais.
+        // A autorização de publicação pela rota ADMIN é coberta pelos testes de conteúdo.
+        for (const [slug,body] of [
+            ['business',{legalName:'Empresa Fixture',cnpj:'11222333000181',physicalAddress:'Rua Fixture, 100',email:'fixture@example.invalid',supportChannels:['fixture@example.invalid']}],
+            ['terms',{text:'Termos sintéticos para teste de integração.'}],
+            ['privacy',{text:'Privacidade sintética para teste de integração.'}]
+        ]) await database.execute('INSERT INTO conteudos_publicados(slug,versao,titulo,corpo,fonte,id_publicador) VALUES(?,?,?,?,?,?)',[slug,'fixture-v1',slug,JSON.stringify(body),'https://example.invalid/fixture',String(legacy.id_usuario)]);
+        const quoted=await request(app).post('/api/orders/quote').set(authHeader).send(input).expect(200);
+        assert.equal(quoted.body.data.total,'16.00');
+        assert.equal(quoted.body.data.lines[0].cost,undefined);
+        const [[after]]=await database.execute('SELECT COUNT(*) AS total FROM pedidos');
+        assert.equal(Number(after.total),Number(before.total));
+    });
     await t.test('duas escritas de endereço principal deixam exatamente um principal', async () => {
         const input = { logradouro: 'Fixture', numero: '1', cidade: 'Fixture', estado: 'SP', principal: true };
         await Promise.all([profile.mutate('addresses', null, input, false, ctx()), profile.mutate('addresses', null, input, false, ctx())]);
@@ -91,7 +144,7 @@ test('MySQL identidade real: baseline vazio + upgrade, HTTP, constraints e conco
         assert.equal(results.filter(r => r.status === 'fulfilled').length, 1);
         await request(app).get('/api/users/me').set('Authorization', `Bearer ${auth.accessToken}`).expect(401);
     });
-    await t.test('bootstrap único, enrollment e duplo verify SQL não emitem duas sessões', async () => {
+    await t.test('bootstrap único, enrollment e duplo verify SQL não emitem duas sessões', async t => {
         const input = { name: 'Admin Fixture', email: 'admin@example.invalid', cpf: '11144477735', dateOfBirth: '2000-01-01', password, passwordConfirmation: password };
         await bootstrapAdmin(database, config, input);
         await assert.rejects(bootstrapAdmin(database, config, input));
@@ -134,7 +187,7 @@ test('MySQL identidade real: baseline vazio + upgrade, HTTP, constraints e conco
         await t.test('galeria SQL: principal única por tipo, imagem legada, arquivo e privacidade', async () => {
             const api = (method, path) => request(app)[method](path).set('Authorization', `Bearer ${adminToken}`);
             const filmId = (await api('post', '/api/films').send({ titulo: 'Galeria SQL', duracao: 90 }).expect(201)).body.data.id_filme;
-            const source = await createImageStorage(config.imageUpload).put({ buffer: Buffer.from('fixture-webp') });
+            const source = await createImageStorage({ ...config.imageUpload, enforceOwner: true }).put({ buffer: Buffer.from('fixture-webp') }, undefined, tokens.verify(adminToken).sub);
             const base = `/api/admin/films/${filmId}/images`;
             const body = { stagingKey: source.key, tipo: 'CAPA', principal: true, ordem: 0 };
             const first = (await api('post', base).send(body).expect(201)).body.data;
@@ -188,10 +241,27 @@ test('MySQL identidade real: baseline vazio + upgrade, HTTP, constraints e conco
             assert.equal(winner.id_local, location);
             const [[count]] = await database.execute('SELECT COUNT(*) AS total FROM sessoes s JOIN salas sa ON sa.id_sala = s.id_sala WHERE sa.id_local = ?', [location]);
             assert.equal(Number(count.total), 1);
-            // Pedido pago fixa os direitos da sessão, mesmo sem fluxo de checkout neste módulo.
-            const [order] = await database.execute("INSERT INTO pedidos (id_usuario,status,valor_total) VALUES (?,'PAGO',?)", [String(legacy.id_usuario), '20.00']);
+            // Pedido e item usam a mesma reserva transacional que o checkout futuro.
+            const [order] = await database.execute("INSERT INTO pedidos (id_usuario,status,valor_total) VALUES (?,'EM_ANDAMENTO',?)", [String(legacy.id_usuario), '20.00']);
             const seat = rooms.find(r => r.room === winner.id_sala).seat;
-            await database.execute('INSERT INTO itens_pedido (id_pedido,id_sessao,id_assento,quantidade,valor_unitario,subtotal) VALUES (?,?,?,?,?,?)', [String(order.insertId), winner.id_sessao, seat, 1, '20.00', '20.00']);
+            const occupancy = createSeatOccupancyService();
+            await database.transaction(c => occupancy.reserve(c,{ orderId:String(order.insertId),sessionId:winner.id_sessao,seatId:seat }));
+            const [item] = await database.execute('INSERT INTO itens_pedido (id_pedido,id_sessao,id_assento,quantidade,valor_unitario,subtotal) VALUES (?,?,?,?,?,?)', [String(order.insertId), winner.id_sessao, seat, 1, '20.00', '20.00']);
+            await database.execute("UPDATE pedidos SET status='PAGO' WHERE id_pedido=?", [String(order.insertId)]);
+            await database.transaction(c => occupancy.confirm(c,{ orderId:String(order.insertId),sessionId:winner.id_sessao,seatId:seat,itemId:String(item.insertId) }));
+            const [contender] = await database.execute("INSERT INTO pedidos (id_usuario,status,valor_total) VALUES (?,'EM_ANDAMENTO',?)", [String(legacy.id_usuario), '20.00']);
+            await assert.rejects(database.transaction(c => occupancy.reserve(c,{ orderId:String(contender.insertId),sessionId:winner.id_sessao,seatId:seat })), { code:'SEAT_CONFLICT' });
+            await database.execute("UPDATE pedidos SET status='CANCELADO' WHERE id_pedido=?", [String(order.insertId)]);
+            await database.transaction(c => occupancy.releaseCancelled(c,{ orderId:String(order.insertId) }));
+            const [other] = await database.execute("INSERT INTO pedidos (id_usuario,status,valor_total) VALUES (?,'EM_ANDAMENTO',?)", [String(legacy.id_usuario), '20.00']);
+            const raceSeat = await Promise.allSettled([contender.insertId,other.insertId].map(id =>
+                database.transaction(c => occupancy.reserve(c,{ orderId:String(id),sessionId:winner.id_sessao,seatId:seat }))));
+            assert.deepEqual(raceSeat.map(r => r.status).sort(),['fulfilled','rejected']);
+            const winningOrder = raceSeat[0].status==='fulfilled' ? contender.insertId : other.insertId;
+            const [resold] = await database.execute('INSERT INTO itens_pedido (id_pedido,id_sessao,id_assento,quantidade,valor_unitario,subtotal) VALUES (?,?,?,?,?,?)', [String(winningOrder), winner.id_sessao, seat, 1, '20.00', '20.00']);
+            assert.ok(resold.insertId);
+            const [[history]] = await database.execute('SELECT COUNT(*) AS total FROM itens_pedido WHERE id_sessao=? AND id_assento=?',[winner.id_sessao,seat]);
+            assert.equal(Number(history.total),2);
             await api('patch', `/api/admin/sessions/${winner.id_sessao}`).send({ horario_inicio: '21:00' }).expect(409);
             await api('delete', `/api/admin/sessions/${winner.id_sessao}`).expect(409);
         });
@@ -362,6 +432,444 @@ test('MySQL identidade real: baseline vazio + upgrade, HTTP, constraints e conco
             await database.transaction(c=>inventory.transition(c,{orderId:loser,actorId:String(customer.id_usuario),action:'CONSUMIR'}));
             const [[consumed]] = await database.execute("SELECT COUNT(*) AS total FROM movimentacoes_estoque WHERE id_reserva IN (SELECT id_reserva FROM estoque_reservas WHERE id_pedido = ?) AND tipo = 'SAIDA'",[loser]);
             assert.equal(Number(consumed.total),2);
+        });
+        await t.test('cupom SQL: último uso é reservado uma vez sob concorrência', async () => {
+            const customerAuth=await identity.login({email:'legacy@example.invalid',password:'Changed!Fixture123'});
+            const claims=tokens.verify(customerAuth.accessToken);
+            const context={actor:{id:claims.sub,sessionId:claims.sid}};
+            const [[film]]=await database.execute("SELECT id_filme FROM filmes WHERE titulo='Streaming SQL' LIMIT 1");
+            const [coupon]=await database.execute("INSERT INTO cupons(codigo,desconto,validade,limite_uso,ativo) VALUES('SQL_LAST_USE','25.00','2099-01-01',1,TRUE)");
+            const orders=[];
+            for(let i=0;i<2;i++){
+                const [order]=await database.execute("INSERT INTO pedidos(id_usuario,status,checkout_key,checkout_hash,checkout_expira_em) VALUES(?,'EM_ANDAMENTO',?,?,DATE_ADD(UTC_TIMESTAMP(3),INTERVAL 15 MINUTE))",[String(legacy.id_usuario),`sql-coupon-${i}`,'a'.repeat(64)]);
+                orders.push(String(order.insertId));
+            }
+            const pricing=createPricingService({model:createPricingModel(database),identity});
+            const input={lines:[{category:'PURCHASE',id:String(film.id_filme),quantity:1}],couponCode:'SQL_LAST_USE'};
+            const results=await Promise.allSettled(orders.map(orderId=>database.transaction(c=>pricing.commit(c,{orderId,input,context}))));
+            assert.deepEqual(results.map(r=>r.status).sort(),['fulfilled','rejected']);
+            const [[usage]]=await database.execute('SELECT COUNT(*) AS total FROM cupom_utilizacoes WHERE id_cupom=?',[String(coupon.insertId)]);
+            assert.equal(Number(usage.total),1);
+            const winner=orders[results.findIndex(r=>r.status==='fulfilled')];
+            await database.execute("UPDATE pedidos SET status='PAGO' WHERE id_pedido=?",[winner]);
+            assert.equal(await database.transaction(c=>pricing.settleCoupon(c,{orderId:winner,action:'CONFIRMAR'})),'CONFIRMADO');
+            const [[confirmed]]=await database.execute("SELECT COUNT(*) AS total FROM cupom_utilizacoes WHERE id_cupom=? AND status='CONFIRMADO'",[String(coupon.insertId)]);
+            assert.equal(Number(confirmed.total),1);
+        });
+        await t.test('rateio/renovação SQL e direito streaming do participante', async () => {
+            const [member]=await database.execute("INSERT INTO usuarios(nome,email,cpf,senha,data_nascimento,tipo_usuario,status) VALUES(?,?,?,?,?,'CLIENTE','ATIVO')",['Participante Fixture','participant-sql@example.invalid','44455566607',legacy.senha,'1990-01-01']);
+            const memberId=String(member.insertId);
+            await database.execute("INSERT INTO verificacoes_idade(id_usuario,faixa_etaria,referencia_provedor,verificado_em,expiracao) VALUES(?,'MAIOR_16','fixture-sql',UTC_TIMESTAMP(3),DATE_ADD(UTC_TIMESTAMP(3),INTERVAL 1 DAY))",[memberId]);
+            const [plan]=await database.execute("INSERT INTO planos(nome,valor_mensal,limite_membros,acesso_catalogo) VALUES('Plano SQL','10.00',2,TRUE)");
+            const [subscription]=await database.execute("INSERT INTO assinaturas(id_usuario,id_plano,inicio,fim,periodicidade,tipo_divisao,status,renovacao_automatica,contrato_snapshot,preco_contratado,tipo_divisao_proximo,tipo_divisao_efetiva_em) VALUES(?,?,'2026-10-10','2026-11-09','MENSAL','TITULAR_PAGA','ATIVA',TRUE,?,'10.00','DIVISAO_IGUAL','2026-11-01')",[String(legacy.id_usuario),String(plan.insertId),JSON.stringify({catalogAccess:true})]);
+            const subscriptionId=String(subscription.insertId);
+            await database.execute('INSERT INTO assinatura_participantes(id_assinatura,id_usuario) VALUES(?,?)',[subscriptionId,memberId]);
+            const billing=createSubscriptionBillingService({model:createSubscriptionBillingModel(database),identity});
+            const cycle=await billing.issue(subscriptionId,'2026-11-10');
+            assert.deepEqual(cycle.shares.map(x=>x.amount),['5.00','5.00']);
+            assert.equal(await billing.issue(subscriptionId,'2026-11-10'),null);
+            const [charges]=await database.execute('SELECT id_usuario,valor_devido,status FROM assinatura_cobrancas WHERE id_assinatura=? ORDER BY id_usuario',[subscriptionId]);
+            assert.equal(charges.length,2);assert.ok(charges.every(x=>x.valor_devido==='5.00'&&x.status==='PENDENTE'));
+            await database.execute("UPDATE assinaturas SET fim='2026-12-09' WHERE id_assinatura=?",[subscriptionId]);
+            await database.execute("UPDATE filmes SET url_reproducao='https://private-origin.example.invalid/film' WHERE titulo='Streaming SQL'");
+            const [[film]]=await database.execute("SELECT id_filme FROM filmes WHERE titulo='Streaming SQL' LIMIT 1");
+            const login=await identity.login({email:'participant-sql@example.invalid',password});
+            const claims=tokens.verify(login.accessToken),context={actor:{id:claims.sub,sessionId:claims.sid}};
+            const provider={available:true,privateOrigin:true,deliveryHosts:['delivery.example.invalid'],async sign(){return {url:'https://delivery.example.invalid/watch?signature=fixture',expiresAt:new Date(Date.now()+30000).toISOString()};}};
+            const streaming=createStreamingService({model:createStreamingModel(),identity,provider});
+            await assert.rejects(streaming.playWithPlan(String(film.id_filme),context),{statusCode:403});
+            await database.execute("UPDATE assinatura_cobrancas SET status='PAGO',data_pagamento=UTC_TIMESTAMP(3) WHERE id_assinatura=?",[subscriptionId]);
+            assert.equal((await streaming.playWithPlan(String(film.id_filme),context)).subscriptionId,subscriptionId);
+            await database.execute("UPDATE assinatura_participantes SET status='SUSPENSO',suspenso_por_cobranca=TRUE WHERE id_assinatura=? AND id_usuario=?",[subscriptionId,memberId]);
+            await assert.rejects(streaming.playWithPlan(String(film.id_filme),context),{statusCode:403});
+        });
+        await t.test('gateway fixture: aprovação tardia duplicada conserva pedido cancelado', async () => {
+            const [order]=await database.execute("INSERT INTO pedidos(id_usuario,status,valor_total) VALUES(?,'CANCELADO','20.00')",[String(legacy.id_usuario)]);
+            const [method]=await database.execute("INSERT INTO metodos_pagamento(id_usuario,tipo,provider,provider_token) VALUES(?,'CREDITO','sandbox_fixture','fixture-token-50')",[String(legacy.id_usuario)]);
+            const [intent]=await database.execute("INSERT INTO pagamento_intencoes(id_usuario,chave_idempotencia,id_pedido,id_metodo,valor,estado,provider) VALUES(?,?,?,?,?,'ENVIADA','sandbox_fixture')",[String(legacy.id_usuario),'late-sql-50',String(order.insertId),String(method.insertId),'20.00']);
+            await database.execute("INSERT INTO pagamentos(id_pedido,id_metodo,valor,status,id_intencao) VALUES(?,?,?,'PENDENTE',?)",[String(order.insertId),String(method.insertId),'20.00',String(intent.insertId)]);
+            const event={eventId:'late-sql-event-50',intentionId:String(intent.insertId),transactionId:'late-sql-txn-50',status:'APROVADO',amount:'20.00',currency:'BRL',occurredAt:new Date().toISOString()};
+            const provider={name:'sandbox_fixture',available:true,async create(){},async consult(){},async verifyWebhook(){return event;}};
+            const payments=createPaymentService({model:createPaymentModel(database),methods:{},identity,provider,checkout:{async ready(){throw new Error('Pedido cancelado não deve reservar direito');}}});
+            const headers={'x-payment-timestamp':String(Math.floor(Date.now()/1000)),'x-payment-signature':'fixture_signature_50'};
+            const results=await Promise.all([payments.webhook('sandbox_fixture',Buffer.from('{}'),headers,{}),payments.webhook('sandbox_fixture',Buffer.from('{}'),headers,{})]);
+            assert.deepEqual(results.map(r=>Boolean(r.duplicate)).sort(),[false,true]);
+            const [[state]]=await database.execute('SELECT p.status AS pedido_status,pg.status AS pagamento_status FROM pedidos p JOIN pagamentos pg ON pg.id_pedido=p.id_pedido WHERE p.id_pedido=?',[String(order.insertId)]);
+            assert.equal(state.pedido_status,'CANCELADO');assert.equal(state.pagamento_status,'APROVADO');
+            const [[events]]=await database.execute('SELECT COUNT(*) AS total FROM pagamento_gateway_eventos WHERE id_intencao=?',[String(intent.insertId)]);
+            assert.equal(Number(events.total),1);
+            const [[audits]]=await database.execute("SELECT COUNT(*) AS total FROM auditoria_eventos WHERE event_type='PAYMENT.APPROVAL_REVIEW' AND aggregate_id=(SELECT id_pagamento FROM pagamentos WHERE id_intencao=?)",[String(intent.insertId)]);
+            assert.equal(Number(audits.total),1);
+        });
+        await t.test('upgrade 30 preserva histórico e cancelamento libera três reservas ou reverte tudo', async () => {
+            const [[absent]]=await database.execute("SELECT COUNT(*) AS total FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='pedido_cancelamentos'");
+            assert.equal(Number(absent.total),0);
+            const [[paidBefore]]=await database.execute("SELECT id_pedido FROM pedidos WHERE status='PAGO' ORDER BY id_pedido LIMIT 1");
+            const [[cancelledBefore]]=await database.execute("SELECT id_pedido FROM pedidos WHERE status='CANCELADO' ORDER BY id_pedido LIMIT 1");
+            const [method]=await database.execute("INSERT INTO metodos_pagamento(id_usuario,tipo,provider,provider_token) VALUES(?,'CREDITO','sandbox_fixture','upgrade30-token')",[String(legacy.id_usuario)]);
+            const [intent]=await database.execute("INSERT INTO pagamento_intencoes(id_usuario,chave_idempotencia,id_pedido,id_metodo,valor,estado,provider) VALUES(?,?,?,?,?,'CONCILIADA','sandbox_fixture')",[String(legacy.id_usuario),'upgrade30-paid',String(paidBefore.id_pedido),String(method.insertId),'20.00']);
+            const [payment]=await database.execute("INSERT INTO pagamentos(id_pedido,id_metodo,valor,status,id_intencao) VALUES(?,?,?,'APROVADO',?)",[String(paidBefore.id_pedido),String(method.insertId),'20.00',String(intent.insertId)]);
+            const [[source]]=await database.execute("SELECT i.id_insumo,i.id_local FROM insumos i WHERE i.nome='Reserva A' ORDER BY i.id_insumo DESC LIMIT 1");
+            assert.ok(source);
+            await database.execute('UPDATE insumos SET quantidade=quantidade+2 WHERE id_insumo=?',[String(source.id_insumo)]);
+            const [film]=await database.execute("INSERT INTO filmes(titulo,duracao,status,disponivel_cinema) VALUES('Upgrade 30 fixture',60,'ATIVO',TRUE)");
+            const [room]=await database.execute("INSERT INTO salas(id_local,nome,capacidade,status) VALUES(?,'Upgrade 30',1,'ATIVA')",[String(source.id_local)]);
+            const [seat]=await database.execute("INSERT INTO assentos(id_sala,fileira,numero,status) VALUES(?,'U',1,'ATIVA')",[String(room.insertId)]);
+            const [coupon]=await database.execute("INSERT INTO cupons(codigo,desconto,validade,limite_uso,ativo) VALUES('UPGRADE30','10.00','2099-01-01',2,TRUE)");
+            const pending=[];
+            for(let n=0;n<2;n++){
+                const day=new Date(Date.now()+(25+n)*86400000).toISOString().slice(0,10);
+                const [session]=await database.execute("INSERT INTO sessoes(id_filme,id_sala,data,horario_inicio,horario_fim,preco_inteira,status,custo_local_dia,custo_exibicao) VALUES(?,?,?,'12:00','13:00','20.00','AGENDADA','0.00','12.50')",[String(film.insertId),String(room.insertId),day]);
+                const [order]=await database.execute("INSERT INTO pedidos(id_usuario,status,valor_total,id_cupom,checkout_key,checkout_hash,checkout_expira_em) VALUES(?,'AGUARDANDO_PAGAMENTO','20.00',?,?,?,DATE_ADD(UTC_TIMESTAMP(3),INTERVAL 15 MINUTE))",[String(legacy.id_usuario),String(coupon.insertId),`upgrade30-checkout-${n}`,'a'.repeat(64)]);
+                const orderId=String(order.insertId),sessionId=String(session.insertId);
+                await database.execute("INSERT INTO itens_pedido(id_pedido,id_sessao,id_assento,quantidade,valor_unitario,subtotal) VALUES(?,?,?,1,'20.00','20.00')",[orderId,sessionId,String(seat.insertId)]);
+                await database.execute("INSERT INTO itens_pedido(id_pedido,id_insumo,quantidade,valor_unitario,subtotal) VALUES(?,?,1,'0.00','0.00')",[orderId,String(source.id_insumo)]);
+                await database.execute("INSERT INTO assento_ocupacoes(id_sessao,id_assento,id_pedido,estado,expira_em) VALUES(?,?,?,'RESERVADA',DATE_ADD(UTC_TIMESTAMP(3),INTERVAL 15 MINUTE))",[sessionId,String(seat.insertId),orderId]);
+                await database.execute("INSERT INTO estoque_reservas(id_pedido,id_insumo,quantidade,status) VALUES(?,?,1,'ATIVA')",[orderId,String(source.id_insumo)]);
+                await database.execute('UPDATE insumos SET quantidade_reservada=quantidade_reservada+1 WHERE id_insumo=?',[String(source.id_insumo)]);
+                await database.execute("INSERT INTO cupom_utilizacoes(id_pedido,id_cupom,desconto_bps,status,expira_em) VALUES(?, ?,1000,'RESERVADO',DATE_ADD(UTC_TIMESTAMP(3),INTERVAL 15 MINUTE))",[orderId,String(coupon.insertId)]);
+                pending.push(orderId);
+            }
+            const [[before]]=await database.execute('SELECT COUNT(*) AS total FROM itens_pedido WHERE id_pedido IN (?,?)',pending);
+            assert.equal(Number(before.total),4);
+            await applyPlan(database,plan);
+            const [[ledger]]=await database.execute("SELECT status,checksum FROM schema_migrations WHERE name='20261011_30_order_manual_cancellation.sql:1'");
+            assert.equal(ledger.status,'APPLIED');assert.equal(ledger.checksum,plan[manualUpgrade].checksum);
+            await applyPlan(database,plan);
+            const [[ledgerCount]]=await database.execute("SELECT COUNT(*) AS total FROM schema_migrations WHERE name='20261011_30_order_manual_cancellation.sql:1'");
+            assert.equal(Number(ledgerCount.total),1);
+            const [[preserved]]=await database.execute('SELECT COUNT(*) AS total FROM itens_pedido WHERE id_pedido IN (?,?)',pending);
+            assert.equal(Number(preserved.total),4);
+            const [[history]]=await database.execute('SELECT p.status AS paid,c.status AS cancelled,pg.status AS payment_status,i.estado AS intent_status FROM pedidos p JOIN pedidos c ON c.id_pedido=? JOIN pagamentos pg ON pg.id_pedido=p.id_pedido JOIN pagamento_intencoes i ON i.id_intencao=pg.id_intencao WHERE p.id_pedido=? AND pg.id_pagamento=?',[String(cancelledBefore.id_pedido),String(paidBefore.id_pedido),String(payment.insertId)]);
+            assert.deepEqual(history,{paid:'PAGO',cancelled:'CANCELADO',payment_status:'APROVADO',intent_status:'CONCILIADA'});
+            const login=await identity.login({email:'legacy@example.invalid',password:'Changed!Fixture123'});
+            const api=(id,key)=>request(app).post(`/api/orders/${id}/cancel`).set('Authorization',`Bearer ${login.accessToken}`).set('Idempotency-Key',key).send({});
+            const reservationState=async id=>{
+                const [[row]]=await database.execute("SELECT p.status AS pedido,(SELECT COUNT(*) FROM assento_ocupacoes WHERE id_pedido=p.id_pedido) AS seats,(SELECT status FROM estoque_reservas WHERE id_pedido=p.id_pedido) AS stock,(SELECT status FROM cupom_utilizacoes WHERE id_pedido=p.id_pedido) AS coupon,(SELECT quantidade_reservada FROM insumos WHERE id_insumo=?) AS stockHeld FROM pedidos p WHERE p.id_pedido=?",[String(source.id_insumo),id]);
+                return row;
+            };
+            const original=await reservationState(pending[0]);
+            assert.equal(original.pedido,'AGUARDANDO_PAGAMENTO');assert.equal(Number(original.seats),1);assert.equal(original.stock,'ATIVA');assert.equal(original.coupon,'RESERVADO');
+            const context={actor:{id:tokens.verify(login.accessToken).sub,sessionId:tokens.verify(login.accessToken).sid}};
+            const pricing=createPricingService({model:createPricingModel(database),identity});
+            const failing=createCheckoutService({model:createOrderModel(),identity,inventory:createInventoryService({model:createInventoryModel(database),identity}),seats:createSeatOccupancyService(),pricing:{async settleCoupon(c,input){await pricing.settleCoupon(c,input);throw new Error('fixture release failure');}}});
+            await assert.rejects(failing.cancel(pending[0],'upgrade30-fail',context),/fixture release failure/);
+            assert.deepEqual(await reservationState(pending[0]),original);
+            const [[noReceipt]]=await database.execute('SELECT COUNT(*) AS total FROM pedido_cancelamentos WHERE id_pedido=?',[pending[0]]);
+            assert.equal(Number(noReceipt.total),0);
+            await api(pending[0],'upgrade30-fail').expect(200);
+            const released=await reservationState(pending[0]);
+            assert.equal(released.pedido,'CANCELADO');assert.equal(Number(released.seats),0);assert.equal(released.stock,'LIBERADA');assert.equal(released.coupon,'LIBERADO');assert.equal(Number(released.stockHeld),Number(original.stockHeld)-1);
+            await api(pending[0],'upgrade30-fail').expect(200);
+            await api(pending[1],'upgrade30-second').expect(200);
+            const [[after]]=await database.execute('SELECT COUNT(*) AS total FROM itens_pedido WHERE id_pedido IN (?,?)',pending);
+            assert.equal(Number(after.total),4);
+        });
+        await t.test('suporte HTTP/MySQL: titularidade, autoria e projeções sem dados alheios', async () => {
+            const supportApp=createApp({config:{...config,rate:{...config.rate,windowMs:100}},database,logQueue,retention:{async check(){return true;}},identityProviders:providers,captchaProvider:{async verify(){return true;}}});
+            t.after(()=>supportApp.locals.close());
+            const first=await identity.login({email:'legacy@example.invalid',password:'Changed!Fixture123'});
+            const second=await identity.login({email:'participant-sql@example.invalid',password});
+            const clientA=(method,path)=>request(supportApp)[method](path).set('Authorization',`Bearer ${first.accessToken}`);
+            const clientB=(method,path)=>request(supportApp)[method](path).set('Authorization',`Bearer ${second.accessToken}`);
+            const administrator=(method,path)=>request(supportApp)[method](path).set('Authorization',`Bearer ${adminToken}`);
+            const firstId=tokens.verify(first.accessToken).sub,secondId=tokens.verify(second.accessToken).sub,adminId=tokens.verify(adminToken).sub;
+            const aSubject='Suporte privado A',bSubject='Suporte privado B',aMessage='Mensagem privada A',bMessage='Mensagem privada B';
+            for(const field of ['clientId','id_cliente','authorId','id_autor','supportId','id_suporte']){
+                await clientA('post','/api/support').send({subject:'Falsificação',message:'Não gravar',[field]:secondId}).expect(422);
+            }
+            const a=(await clientA('post','/api/support').send({subject:aSubject,message:aMessage}).expect(201)).body.data.id;
+            const b=(await clientB('post','/api/support').send({subject:bSubject,message:bMessage}).expect(201)).body.data.id;
+            const ownA=await clientA('get','/api/support').expect(200);
+            const ownB=await clientB('get','/api/support').expect(200);
+            assert.ok(ownA.body.data.items.some(x=>x.id===a));assert.ok(!ownA.body.data.items.some(x=>x.id===b));
+            assert.ok(ownB.body.data.items.some(x=>x.id===b));assert.ok(!ownB.body.data.items.some(x=>x.id===a));
+            assert.ok(!ownA.text.includes(bSubject));assert.ok(!ownA.text.includes(bMessage));assert.ok(!ownB.text.includes(aSubject));
+            const detailA=await clientA('get',`/api/support/${a}`).expect(200);
+            assert.equal(detailA.body.data.clientId,firstId);
+            for(const response of [ownA,ownB,detailA])for(const field of ['mensagem','resposta','senha','email','cpf','id_cliente','id_atendente','id_suporte'])assert.ok(!response.text.includes(`"${field}"`));
+            assert.ok(!detailA.text.includes(aMessage));assert.ok(!detailA.text.includes(bMessage));
+            await clientA('get',`/api/support/${b}`).expect(404);
+            await clientA('get',`/api/support/${b}/messages`).expect(404);
+            await clientA('post',`/api/support/${b}/messages`).send({message:'Intrusão'}).expect(404);
+            await clientA('post',`/api/support/${b}/close`).send({}).expect(404);
+            for(const field of ['clientId','id_cliente','authorId','id_autor','supportId','id_suporte']){
+                await clientA('post',`/api/support/${a}/messages`).send({message:'Não gravar',[field]:b}).expect(422);
+            }
+            const ownMessages=await clientA('get',`/api/support/${a}/messages`).expect(200);
+            assert.deepEqual(ownMessages.body.data.items.map(x=>x.message),[aMessage]);
+            assert.ok(!ownMessages.text.includes(bMessage));
+            await clientA('post',`/api/support/${a}/messages`).send({message:'Complemento legítimo'}).expect(201);
+            const queue=await administrator('get','/api/admin/support').expect(200);
+            assert.ok(queue.body.data.items.some(x=>x.id===a));assert.ok(queue.body.data.items.some(x=>x.id===b));
+            assert.ok(!queue.text.includes(aMessage));assert.ok(!queue.text.includes(bMessage));
+            await administrator('get',`/api/support/${a}`).expect(200);
+            await administrator('get',`/api/support/${a}/messages`).expect(200);
+            await administrator('post',`/api/support/${a}/messages`).send({message:'Sem atribuição'}).expect(403);
+            await administrator('post',`/api/admin/support/${a}/assign`).send({attendantId:adminId}).expect(200);
+            await administrator('post',`/api/support/${a}/messages`).send({message:'Resposta atribuída'}).expect(201);
+            const [aRows]=await database.execute('SELECT id_autor,papel,mensagem FROM suporte_mensagens WHERE id_suporte=? ORDER BY id_mensagem',[a]);
+            const [bRows]=await database.execute('SELECT id_autor,papel,mensagem FROM suporte_mensagens WHERE id_suporte=? ORDER BY id_mensagem',[b]);
+            assert.deepEqual(aRows.map(x=>[String(x.id_autor),x.papel,x.mensagem]),[[firstId,'CLIENTE',aMessage],[firstId,'CLIENTE','Complemento legítimo'],[adminId,'ADMIN','Resposta atribuída']]);
+            assert.deepEqual(bRows.map(x=>[String(x.id_autor),x.papel,x.mensagem]),[[secondId,'CLIENTE',bMessage]]);
+            const [[count]]=await database.execute("SELECT COUNT(*) AS total FROM suporte WHERE assunto='Falsificação'");
+            assert.equal(Number(count.total),0);
+        });
+        await t.test('suporte HTTP/MySQL: duas atribuições concorrentes preservam responsável e autoria', async t => {
+            t.diagnostic('início da disputa de suporte');
+            const gates=new Map();
+            const gatedDatabase={...database,transaction:(operation,options)=>database.transaction(c=>operation({...c,execute:async(sql,args=[])=>{
+                const gate=gates.get(String(args[0]));
+                if(gate&&sql.includes('FROM suporte WHERE id_suporte=? FOR UPDATE')){gate.count++;if(gate.count===2)gate.arrived();await gate.opened;}
+                return c.execute(sql,args);
+            }}),options)};
+            const supportApp=createApp({config:{...config,rate:{...config.rate,windowMs:100}},database:gatedDatabase,logQueue,retention:{async check(){return true;}},identityProviders:providers,captchaProvider:{async verify(){return true;}}});
+            t.after(()=>supportApp.locals.close());
+            const [created]=await database.execute("INSERT INTO usuarios(nome,email,cpf,senha,data_nascimento,tipo_usuario,status) VALUES(?,?,?,?,?,'ADMIN','ATIVO')",['Segundo ADMIN','support-admin-2@example.invalid','55566677708',legacy.senha,'1990-01-01']);
+            const adminTwoId=String(created.insertId);
+            const login=await identity.login({email:'support-admin-2@example.invalid',password});
+            const enrollment=await identity.enroll({method:'APP',challengeToken:login.challengeToken});
+            const secondToken=(await identity.verify({challengeToken:enrollment.challengeToken,code:OTPAuth.URI.parse(enrollment.provisioningUri).generate()})).accessToken;
+            const firstId=tokens.verify(adminToken).sub;
+            const customer=await identity.login({email:'legacy@example.invalid',password:'Changed!Fixture123'});
+            const client=(method,path)=>request(supportApp)[method](path).set('Authorization',`Bearer ${customer.accessToken}`);
+            const adminOne=(method,path)=>request(supportApp)[method](path).set('Authorization',`Bearer ${adminToken}`);
+            const adminTwo=(method,path)=>request(supportApp)[method](path).set('Authorization',`Bearer ${secondToken}`);
+            const id=(await client('post','/api/support').send({subject:'Corrida de atribuição',message:'Dúvida inicial'}).expect(201)).body.data.id;
+            t.diagnostic('chamado criado');
+            const barrier=()=>{
+                let arrived,open;
+                const reached=new Promise(resolve=>{arrived=resolve;});
+                const opened=new Promise(resolve=>{open=resolve;});
+                return {count:0,arrived,open,opened,reached};
+            };
+            const race=barrier();gates.set(id,race);
+            const requests=Promise.all([
+                adminOne('post',`/api/admin/support/${id}/assign`).send({attendantId:firstId}),
+                adminTwo('post',`/api/admin/support/${id}/assign`).send({attendantId:adminTwoId})
+            ]);
+            let timer;
+            try { await Promise.race([race.reached,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(`Atribuições não alcançaram o lock SQL: ${race.count}/2`)),10000);})]); }
+            finally { clearTimeout(timer);gates.delete(id);race.open(); }
+            const assigned=await requests;
+            t.diagnostic(`atribuições retornaram ${assigned.map(x=>x.status).join(',')}`);
+            assert.deepEqual(assigned.map(x=>x.status).sort(),[200,409]);
+            const winner=assigned[0].status===200?{id:firstId,api:adminOne,loser:adminTwo}:{id:adminTwoId,api:adminTwo,loser:adminOne};
+            const [[owner]]=await database.execute('SELECT id_atendente FROM suporte WHERE id_suporte=?',[id]);
+            assert.equal(String(owner.id_atendente),winner.id);
+            await winner.loser('post',`/api/support/${id}/messages`).send({message:'Resposta rejeitada'}).expect(403);
+            await winner.api('post',`/api/support/${id}/messages`).send({message:'Resposta efetiva'}).expect(201);
+            const loserId=winner.id===firstId?adminTwoId:firstId;
+            const transferRace=barrier();gates.set(id,transferRace);
+            const operations=Promise.all([
+                winner.api('post',`/api/support/${id}/messages`).send({message:'Resposta durante disputa'}),
+                winner.loser('post',`/api/admin/support/${id}/assign`).send({attendantId:loserId})
+            ]);
+            let transferTimer;
+            try { await Promise.race([transferRace.reached,new Promise((_,reject)=>{transferTimer=setTimeout(()=>reject(new Error(`Resposta e troca não alcançaram o lock SQL: ${transferRace.count}/2`)),10000);})]); }
+            finally { clearTimeout(transferTimer);gates.delete(id);transferRace.open(); }
+            const [reply,transfer]=await operations;
+            t.diagnostic(`resposta/troca retornaram ${reply.status},${transfer.status}`);
+            assert.equal(reply.status,201);assert.equal(transfer.status,409);
+            const [[audits]]=await database.execute("SELECT COUNT(*) AS total FROM auditoria_eventos WHERE event_type='SUPPORT.ASSIGNED' AND aggregate_id=?",[id]);
+            assert.equal(Number(audits.total),1);
+            const [messages]=await database.execute('SELECT id_autor,papel,mensagem FROM suporte_mensagens WHERE id_suporte=? ORDER BY id_mensagem',[id]);
+            assert.deepEqual(messages.map(x=>[String(x.id_autor),x.papel,x.mensagem]),[[tokens.verify(customer.accessToken).sub,'CLIENTE','Dúvida inicial'],[winner.id,'ADMIN','Resposta efetiva'],[winner.id,'ADMIN','Resposta durante disputa']]);
+            const [[ownerAfter]]=await database.execute('SELECT id_atendente FROM suporte WHERE id_suporte=?',[id]);
+            assert.equal(String(ownerAfter.id_atendente),winner.id);
+        });
+        await t.test('compra de ingresso HTTP: corrida, cancelamento, revenda, pagamento duplicado e consumo', async () => {
+            const secret=randomBytes(32);
+            let captures=0;
+            const provider={
+                name:'sandbox_fixture',available:true,
+                async tokenize(){return {provider:'sandbox_fixture',token:'fixture-ticket-token',brand:'Fixture',last4:'1234'};},
+                async create({intentionId}){captures++;return {transactionId:`ticket-txn-${intentionId}`};},
+                async consult(){return null;},
+                async verifyWebhook({rawBody,signature,timestamp}){
+                    const expected=createHmac('sha256',secret).update(`${timestamp}.`).update(rawBody).digest('hex');
+                    return signature===expected?JSON.parse(rawBody.toString('utf8')):null;
+                }
+            };
+            const purchaseApp=createApp({config:{...config,rate:{...config.rate,windowMs:100}},database,logQueue,retention:{async check(){return true;}},identityProviders:providers,captchaProvider:{async verify(){return true;}},paymentProvider:provider});
+            t.after(()=>purchaseApp.locals.close());
+            const client=await identity.login({email:'legacy@example.invalid',password:'Changed!Fixture123'});
+            const customer=(method,path)=>request(purchaseApp)[method](path).set('Authorization',`Bearer ${client.accessToken}`);
+            const outsiderLogin=await identity.login({email:'participant-sql@example.invalid',password});
+            const outsider=(method,path)=>request(purchaseApp)[method](path).set('Authorization',`Bearer ${outsiderLogin.accessToken}`);
+            const admin=(method,path)=>request(purchaseApp)[method](path).set('Authorization',`Bearer ${adminToken}`);
+            const date=new Date(Date.now()+7*86400000).toISOString().slice(0,10);
+            const [film]=await database.execute("INSERT INTO filmes(titulo,duracao,disponivel_cinema,status) VALUES('Compra integrada SQL',60,TRUE,'ATIVO')");
+            const [location]=await database.execute("INSERT INTO locais(nome,cidade,estado,status) VALUES('Compra integrada SQL','SP','SP','ATIVO')");
+            const [room]=await database.execute("INSERT INTO salas(id_local,nome,capacidade,status) VALUES(?,'Sala unica',1,'ATIVA')",[String(location.insertId)]);
+            const [seat]=await database.execute("INSERT INTO assentos(id_sala,fileira,numero,status) VALUES(?,'A',1,'ATIVA')",[String(room.insertId)]);
+            const [session]=await database.execute("INSERT INTO sessoes(id_filme,id_sala,data,horario_inicio,horario_fim,preco_inteira,status,custo_local_dia,custo_exibicao) VALUES(?,?,?,'12:00','13:00','20.00','AGENDADA','0.00','12.50')",[String(film.insertId),String(room.insertId),date]);
+            const sessionId=String(session.insertId),seatId=String(seat.insertId);
+            const line={kind:'SESSION',id:sessionId,seatId,quantity:1};
+            const quote=await customer('post','/api/orders/quote').send({lines:[line]}).expect(200);
+            assert.equal(quote.body.data.total,'20.00');
+            const input={lines:[line],acceptance:{accepted:true,offerHash:quote.body.data.contract.offerHash}};
+            const checkout=(key)=>customer('post','/api/orders/checkout').set('Idempotency-Key',key).send(input);
+            const race=await Promise.all([checkout('ticket-race-first'),checkout('ticket-race-second')]);
+            assert.deepEqual(race.map(r=>r.status).sort(),[201,409]);
+            const reserved=race.find(r=>r.status===201).body.data.orderId;
+            await customer('get',`/api/orders/${reserved}`).expect(200);
+            await outsider('get',`/api/orders/${reserved}`).expect(404);
+            await outsider('post',`/api/orders/${reserved}/cancel`).set('Idempotency-Key','manual-outsider-old').send({}).expect(404);
+            const [[occupied]]=await database.execute('SELECT COUNT(*) AS total FROM assento_ocupacoes WHERE id_sessao=? AND id_assento=?',[sessionId,seatId]);
+            assert.equal(Number(occupied.total),1);
+            await database.execute('UPDATE pedidos SET checkout_expira_em=DATE_SUB(UTC_TIMESTAMP(3),INTERVAL 1 SECOND) WHERE id_pedido=?',[reserved]);
+            assert.deepEqual(await purchaseApp.locals.checkout.expireBatch(),{cancelled:1});
+            assert.deepEqual(await purchaseApp.locals.checkout.expireBatch(),{cancelled:0});
+            const [[cancelled]]=await database.execute('SELECT status FROM pedidos WHERE id_pedido=?',[reserved]);
+            assert.equal(cancelled.status,'CANCELADO');
+            const resale=await checkout('ticket-resale-third').expect(201);
+            const orderId=resale.body.data.orderId;
+            assert.notEqual(orderId,reserved);
+            const method=await customer('post','/api/users/me/payment-methods').send({type:'CREDITO',setupReference:'fixture-ticket-setup'}).expect(201);
+            const payment=await customer('post','/api/payments').set('Idempotency-Key','ticket-payment-third').send({orderId,methodId:method.body.data.id}).expect(202);
+            assert.equal(payment.body.data.status,'PENDENTE');
+            assert.equal(captures,1);
+            const event={eventId:'ticket-approved-third',intentionId:payment.body.data.intentionId,transactionId:`ticket-txn-${payment.body.data.intentionId}`,status:'APROVADO',amount:'20.00',currency:'BRL',occurredAt:new Date().toISOString()};
+            const raw=JSON.stringify(event),timestamp=String(Math.floor(Date.now()/1000));
+            const signature=createHmac('sha256',secret).update(`${timestamp}.`).update(raw).digest('hex');
+            const webhook=()=>request(purchaseApp).post('/api/payments/webhooks/sandbox_fixture').set('Content-Type','application/json').set('x-payment-timestamp',timestamp).set('x-payment-signature',signature).send(raw);
+            const confirmations=await Promise.all([webhook(),webhook()]);
+            assert.deepEqual(confirmations.map(r=>r.status),[204,204]);
+            const [[paid]]=await database.execute('SELECT status FROM pedidos WHERE id_pedido=?',[orderId]);
+            assert.equal(paid.status,'PAGO');
+            const [[eventCount]]=await database.execute('SELECT COUNT(*) AS total FROM pagamento_gateway_eventos WHERE evento_id=?',[event.eventId]);
+            assert.equal(Number(eventCount.total),1);
+            const tickets=await customer('get',`/api/orders/${orderId}/tickets`).expect(200);
+            assert.equal(tickets.body.data.items.length,1);
+            const ticket=tickets.body.data.items[0];
+            assert.equal(ticket.status,'GERADO');
+            const consumption=await admin('post','/api/tickets/consume').send({code:ticket.code}).expect(200);
+            assert.equal(consumption.body.data.status,'UTILIZADO');
+            await admin('post','/api/tickets/consume').send({code:ticket.code}).expect(409);
+            const [[issued]]=await database.execute('SELECT COUNT(*) AS total FROM tickets WHERE id_item IN (SELECT id_item FROM itens_pedido WHERE id_pedido=?)',[orderId]);
+            assert.equal(Number(issued.total),1);
+            await outsider('get',`/api/orders/${orderId}`).expect(404);
+            await outsider('get',`/api/orders/${orderId}/tickets`).expect(404);
+            await outsider('post',`/api/payments/${payment.body.data.id}/refunds`).set('Idempotency-Key','outsider-refund-1').send({reason:'ARREPENDIMENTO'}).expect(404);
+            const refund=await customer('post',`/api/payments/${payment.body.data.id}/refunds`).set('Idempotency-Key','ticket-refund-1').send({reason:'ARREPENDIMENTO'}).expect(202);
+            assert.equal(refund.body.data.status,'RECEBIDA');
+            assert.equal(refund.body.data.requestedAmount,'20.00');
+            const repeatedRefund=await customer('post',`/api/payments/${payment.body.data.id}/refunds`).set('Idempotency-Key','ticket-refund-1').send({reason:'ARREPENDIMENTO'}).expect(202);
+            assert.equal(repeatedRefund.body.data.id,refund.body.data.id);
+            const [[stillPaid]]=await database.execute('SELECT status FROM pedidos WHERE id_pedido=?',[orderId]);
+            assert.equal(stillPaid.status,'PAGO');
+            const [[stillUsed]]=await database.execute('SELECT status FROM tickets WHERE id_ticket=?',[ticket.id]);
+            assert.equal(stillUsed.status,'UTILIZADO');
+
+            const raceDate=new Date(Date.now()+8*86400000).toISOString().slice(0,10);
+            const [raceSession]=await database.execute("INSERT INTO sessoes(id_filme,id_sala,data,horario_inicio,horario_fim,preco_inteira,status,custo_local_dia,custo_exibicao) VALUES(?,?,?,'12:00','13:00','20.00','AGENDADA','0.00','12.50')",[String(film.insertId),String(room.insertId),raceDate]);
+            const raceSessionId=String(raceSession.insertId);
+            const raceLine={kind:'SESSION',id:raceSessionId,seatId,quantity:1};
+            const raceQuote=await customer('post','/api/orders/quote').send({lines:[raceLine]}).expect(200);
+            const raceOrder=(await customer('post','/api/orders/checkout').set('Idempotency-Key','ticket-expiry-race').send({lines:[raceLine],acceptance:{accepted:true,offerHash:raceQuote.body.data.contract.offerHash}}).expect(201)).body.data.orderId;
+            const racePayment=(await customer('post','/api/payments').set('Idempotency-Key','payment-expiry-race').send({orderId:raceOrder,methodId:method.body.data.id}).expect(202)).body.data;
+            await database.execute('UPDATE pedidos SET checkout_expira_em=DATE_SUB(UTC_TIMESTAMP(3),INTERVAL 1 SECOND) WHERE id_pedido=?',[raceOrder]);
+            const lateEvent={eventId:'ticket-expiry-race-approved',intentionId:racePayment.intentionId,transactionId:`ticket-txn-${racePayment.intentionId}`,status:'APROVADO',amount:'20.00',currency:'BRL',occurredAt:new Date().toISOString()};
+            const lateRaw=JSON.stringify(lateEvent),lateTimestamp=String(Math.floor(Date.now()/1000));
+            const lateSignature=createHmac('sha256',secret).update(`${lateTimestamp}.`).update(lateRaw).digest('hex');
+            const [expiry,lateWebhook]=await Promise.all([
+                purchaseApp.locals.checkout.expireBatch(),
+                request(purchaseApp).post('/api/payments/webhooks/sandbox_fixture').set('Content-Type','application/json').set('x-payment-timestamp',lateTimestamp).set('x-payment-signature',lateSignature).send(lateRaw)
+            ]);
+            assert.equal(expiry.cancelled,1);
+            assert.equal(lateWebhook.status,204);
+            const [[lateState]]=await database.execute('SELECT o.status AS order_status,p.status AS payment_status FROM pedidos o JOIN pagamentos p ON p.id_pedido=o.id_pedido WHERE o.id_pedido=?',[raceOrder]);
+            assert.equal(lateState.order_status,'CANCELADO');
+            assert.equal(lateState.payment_status,'APROVADO');
+            const [[lateTickets]]=await database.execute('SELECT COUNT(*) AS total FROM tickets WHERE id_item IN (SELECT id_item FROM itens_pedido WHERE id_pedido=?)',[raceOrder]);
+            assert.equal(Number(lateTickets.total),0);
+            const [[lateOccupancy]]=await database.execute('SELECT COUNT(*) AS total FROM assento_ocupacoes WHERE id_pedido=?',[raceOrder]);
+            assert.equal(Number(lateOccupancy.total),0);
+
+            const manualOrder=async(offset,key)=>{
+                const day=new Date(Date.now()+offset*86400000).toISOString().slice(0,10);
+                const [created]=await database.execute("INSERT INTO sessoes(id_filme,id_sala,data,horario_inicio,horario_fim,preco_inteira,status,custo_local_dia,custo_exibicao) VALUES(?,?,?,'12:00','13:00','20.00','AGENDADA','0.00','12.50')",[String(film.insertId),String(room.insertId),day]);
+                const id=String(created.insertId),body={lines:[{kind:'SESSION',id,seatId,quantity:1}]};
+                const quoted=await customer('post','/api/orders/quote').send(body).expect(200);
+                const order=(await customer('post','/api/orders/checkout').set('Idempotency-Key',key).send({...body,acceptance:{accepted:true,offerHash:quoted.body.data.contract.offerHash}}).expect(201)).body.data.orderId;
+                return {id,order,body};
+            };
+            const cancel=(id,key)=>customer('post',`/api/orders/${id}/cancel`).set('Idempotency-Key',key);
+            const firstManual=await manualOrder(9,'manual-checkout-1');
+            await outsider('post',`/api/orders/${firstManual.order}/cancel`).set('Idempotency-Key','manual-outsider-1').expect(404);
+            const firstCancel=await cancel(firstManual.order,'manual-cancel-1').expect(200);
+            assert.deepEqual(firstCancel.body.data,{orderId:firstManual.order,status:'CANCELADO'});
+            assert.deepEqual((await cancel(firstManual.order,'manual-cancel-1').expect(200)).body.data,firstCancel.body.data);
+            await cancel(firstManual.order,'manual-cancel-other').expect(200);
+            const [[manualAudit]]=await database.execute("SELECT COUNT(*) AS total FROM auditoria_eventos WHERE event_type='ORDER.CANCELLED_BY_OWNER' AND aggregate_id=?",[firstManual.order]);
+            assert.equal(Number(manualAudit.total),1);
+            const [[manualOccupancy]]=await database.execute('SELECT COUNT(*) AS total FROM assento_ocupacoes WHERE id_pedido=?',[firstManual.order]);
+            assert.equal(Number(manualOccupancy.total),0);
+            const freshQuote=await customer('post','/api/orders/quote').send(firstManual.body).expect(200);
+            const resold=(await customer('post','/api/orders/checkout').set('Idempotency-Key','manual-resale-1').send({...firstManual.body,acceptance:{accepted:true,offerHash:freshQuote.body.data.contract.offerHash}}).expect(201)).body.data.orderId;
+            assert.notEqual(resold,firstManual.order);
+            const [[manualHistory]]=await database.execute('SELECT COUNT(*) AS total FROM itens_pedido WHERE id_sessao=? AND id_assento=?',[firstManual.id,seatId]);
+            assert.equal(Number(manualHistory.total),2);
+            await cancel(orderId,'manual-paid-denied').expect(409);
+            const otherManual=await manualOrder(10,'manual-checkout-2');
+            const conflictingKey=await cancel(otherManual.order,'manual-cancel-1').expect(409);
+            assert.equal(conflictingKey.body.code,'ORDER_CANCEL_CONFLICT');
+            const prepared=await manualOrder(11,'manual-checkout-prepared');
+            const [preparedIntent]=await database.execute('INSERT INTO pagamento_intencoes(id_usuario,chave_idempotencia,id_pedido,id_metodo,valor) VALUES(?,?,?,?,?)',[String(legacy.id_usuario),'manual-prepared-payment',prepared.order,method.body.data.id,'20.00']);
+            const beforeCapture=captures;
+            await cancel(prepared.order,'manual-cancel-prepared').expect(200);
+            const [[neutralized]]=await database.execute('SELECT estado FROM pagamento_intencoes WHERE id_intencao=?',[String(preparedIntent.insertId)]);
+            assert.equal(neutralized.estado,'CANCELADA');
+            await customer('post','/api/payments').set('Idempotency-Key','manual-prepared-payment').send({orderId:prepared.order,methodId:method.body.data.id}).expect(409);
+            assert.equal(captures,beforeCapture);
+            const sent=await manualOrder(12,'manual-checkout-sent');
+            await customer('post','/api/payments').set('Idempotency-Key','manual-sent-payment').send({orderId:sent.order,methodId:method.body.data.id}).expect(202);
+            assert.equal((await cancel(sent.order,'manual-cancel-sent').expect(409)).body.code,'ORDER_CANCEL_CONFLICT');
+            const [[sentState]]=await database.execute('SELECT status FROM pedidos WHERE id_pedido=?',[sent.order]);
+            assert.equal(sentState.status,'AGUARDANDO_PAGAMENTO');
+            const expiring=await manualOrder(13,'manual-checkout-expiring');
+            await database.execute('UPDATE pedidos SET checkout_expira_em=DATE_SUB(UTC_TIMESTAMP(3),INTERVAL 1 SECOND) WHERE id_pedido=?',[expiring.order]);
+            const [manualExpiry,jobExpiry]=await Promise.all([cancel(expiring.order,'manual-cancel-expiring'),purchaseApp.locals.checkout.expireBatch()]);
+            assert.equal(manualExpiry.status,200);assert.ok([0,1].includes(jobExpiry.cancelled));
+            const [[expiredState]]=await database.execute('SELECT status FROM pedidos WHERE id_pedido=?',[expiring.order]);
+            assert.equal(expiredState.status,'CANCELADO');
+            const dispatching=await manualOrder(14,'manual-checkout-dispatch');
+            await database.execute('INSERT INTO pagamento_intencoes(id_usuario,chave_idempotencia,id_pedido,id_metodo,valor) VALUES(?,?,?,?,?)',[String(legacy.id_usuario),'manual-dispatch-race',dispatching.order,method.body.data.id,'20.00']);
+            const [cancelRace,dispatchRace]=await Promise.all([
+                cancel(dispatching.order,'manual-cancel-dispatch'),
+                customer('post','/api/payments').set('Idempotency-Key','manual-dispatch-race').send({orderId:dispatching.order,methodId:method.body.data.id})
+            ]);
+            assert.ok(cancelRace.status===200&&dispatchRace.status===409||cancelRace.status===409&&dispatchRace.status===202);
+            const [[dispatchState]]=await database.execute('SELECT o.status AS order_status,i.estado AS intent_status FROM pedidos o JOIN pagamento_intencoes i ON i.id_pedido=o.id_pedido WHERE o.id_pedido=?',[dispatching.order]);
+            assert.equal(dispatchState.order_status,cancelRace.status===200?'CANCELADO':'AGUARDANDO_PAGAMENTO');
+            assert.equal(dispatchState.intent_status,cancelRace.status===200?'CANCELADA':'ENVIADA');
+            const rollback=await manualOrder(15,'manual-checkout-rollback');
+            const claims=tokens.verify(client.accessToken);
+            const failing=createCheckoutService({model:createOrderModel(),identity,inventory:{},seats:{async releaseCancelled(){throw new Error('release fixture failure');}},pricing:{async settleCoupon(){}}});
+            await assert.rejects(failing.cancel(rollback.order,'manual-cancel-rollback',{actor:{id:claims.sub,sessionId:claims.sid}}),/release fixture failure/);
+            const [[rolledBack]]=await database.execute('SELECT status FROM pedidos WHERE id_pedido=?',[rollback.order]);
+            assert.equal(rolledBack.status,'AGUARDANDO_PAGAMENTO');
+            const [[reservedAfterRollback]]=await database.execute('SELECT COUNT(*) AS total FROM assento_ocupacoes WHERE id_pedido=?',[rollback.order]);
+            assert.equal(Number(reservedAfterRollback.total),1);
+            await cancel(rollback.order,'manual-cancel-rollback').expect(200);
+        });
+        await t.test('tickets SQL: UNIQUE por unidade, consumo e saída concorrentes', async () => {
+            const [[item]] = await database.execute('SELECT ip.id_item, p.id_usuario FROM itens_pedido ip JOIN pedidos p ON p.id_pedido=ip.id_pedido WHERE ip.id_sessao IS NOT NULL ORDER BY ip.id_item LIMIT 1');
+            assert.ok(item);
+            const code = randomBytes(32).toString('base64url');
+            const [inserted] = await database.execute("INSERT INTO tickets(id_item,codigo,tipo,unidade,expira_em) VALUES(?,?,'INGRESSO_SESSAO',1,DATE_ADD(UTC_TIMESTAMP(3),INTERVAL 1 HOUR))",[String(item.id_item),code]);
+            await assert.rejects(database.execute("INSERT INTO tickets(id_item,codigo,tipo,unidade) VALUES(?,?,'INGRESSO_SESSAO',1)",[String(item.id_item),randomBytes(32).toString('base64url')]),{code:'ER_DUP_ENTRY'});
+            const model=createTicketModel(database),ticketId=String(inserted.insertId),actorId=String(item.id_usuario);
+            const consume=await Promise.all([database.transaction(c=>model.consume(c,ticketId,actorId,null)),database.transaction(c=>model.consume(c,ticketId,actorId,null))]);
+            assert.deepEqual(consume.sort(),[false,true]);
+            await database.transaction(c=>model.appendPassage(c,ticketId,'ENTRADA',actorId));
+            const exits=await Promise.all([0,1].map(()=>request(app).post('/api/tickets/exit').set('Authorization',`Bearer ${adminToken}`).send({code})));
+            assert.deepEqual(exits.map(r=>r.status).sort(),[200,409]);
+            const [[row]]=await database.execute('SELECT status,data_utilizacao,saida_em FROM tickets WHERE id_ticket=?',[ticketId]);
+            assert.equal(row.status,'UTILIZADO');assert.ok(row.data_utilizacao);assert.ok(row.saida_em);
+            const [[passages]]=await database.execute("SELECT COUNT(*) AS total FROM ticket_passagens WHERE id_ticket=? AND tipo='SAIDA'",[ticketId]);
+            assert.equal(Number(passages.total),1);
         });
     });
     // Preserva evidência no schema _test. Limpeza/recriação pelo operador, nunca DROP DATABASE automático.

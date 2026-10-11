@@ -44,11 +44,16 @@ export function createDatabase(config, suppliedPool) {
             try { return await raw.execute(sql, params); }
             catch (error) { if (destroyed) throw ApiError.indisponivel(); throw error; }
         };
+        const control = method => async () => {
+            if (destroyed || signal?.aborted) throw ApiError.indisponivel();
+            try { return await raw[method](); }
+            catch (error) { if (destroyed) throw ApiError.indisponivel(); throw error; }
+        };
         try {
             return await Promise.race([deadline, (async () => {
                 await execute("SET SESSION time_zone = '+00:00'");
                 if (signal?.aborted) throw ApiError.indisponivel();
-                const result = await operation({ execute, invalidate: destroy });
+                const result = await operation({ execute, beginTransaction: control('beginTransaction'), commit: control('commit'), rollback: control('rollback'), invalidate: destroy });
                 if (destroyed) throw ApiError.indisponivel();
                 return result;
             })()]);
@@ -61,13 +66,13 @@ export function createDatabase(config, suppliedPool) {
     const execute = (sql, params = [], options) => withConnection(c => c.execute(sql, params), options);
     async function transaction(operation, options) {
         return withConnection(async connection => {
-            await connection.execute('START TRANSACTION');
+            await connection.beginTransaction();
             try {
                 const result = await operation(connection);
-                await connection.execute('COMMIT');
+                await connection.commit();
                 return result;
             } catch (error) {
-                try { await connection.execute('ROLLBACK'); }
+                try { await connection.rollback(); }
                 catch { connection.invalidate(); report('transaction_rollback_failed'); }
                 throw error;
             }

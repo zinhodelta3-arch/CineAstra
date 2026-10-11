@@ -77,7 +77,8 @@ test('modelo usa lock do cupom e grava snapshot em SQL parametrizado',async()=>{
     await m.coupon('PROMO25',db,true);
     assert.ok(queries[0].sql.endsWith('FOR UPDATE'));assert.deepEqual(queries[0].args,['PROMO25']);
     await m.recordCoupon(db,'9007199254740993','1',2500);
-    assert.deepEqual(queries[1].args,['9007199254740993','1',2500]);
+    assert.deepEqual(queries[1].args,['9007199254740993','1',2500,'9007199254740993']);
+    assert.match(queries[1].sql,/checkout_expira_em/);
     await m.insertSnapshot(db,'9007199254740993',{total:'120.00'});
     assert.equal(queries[2].args[0],'9007199254740993');
 });

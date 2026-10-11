@@ -1,0 +1,17 @@
+# Tarefa 37 — streaming avulso
+
+## Atualização tarefa 41 — streaming por assinatura
+
+`POST /api/streaming/films/{filmId}/play` usa o benefício `catalogAccess` congelado no contrato. Exige assinatura `ATIVA` dentro de `inicio`–`fim`, titular ou participante `ATIVO`, cota aplicável paga e ausência de suspensão aplicável. Um participante aceito sem cota própria pode usar o pagamento do titular até a primeira cota; após a emissão, sua própria cota precisa estar paga. Em `DIVISAO_IGUAL`, suspensão do titular não retira direito de outro pagador. Filme disponível, classificação indicativa e idade verificada são conferidos antes e depois da assinatura da URL. Resposta: `{filmId,subscriptionId,url,expiresAt}` no envelope padrão. Não há `item_pedido` nem registro em `acessos_streaming` para o direito do plano; nenhuma migration nova.
+
+Compras e aluguéis pagos continuam em `GET /api/streaming/my-accesses` e `POST /api/streaming/{accessId}/play`, independentes da suspensão da assinatura. O novo play também exige provider de origem privada real; ausência responde 503. A URL assinada pode persistir até 60 segundos após perda do direito, conforme o limite já documentado. Migrations 21–24 e autorização SQL real aguardam MySQL `_test` isolado.
+
+Aluguel (`ALUGUEL`) e compra (`COMPRA`) usam `POST /api/orders/checkout` e o pagamento existente. Checkout de streaming exige filme ativo com origem configurada e provider de mídia privada; sem ele retorna 503 antes da cobrança. A migration 21 acrescenta `itens_pedido.dias_acesso_aluguel_snapshot`, preenchido sob lock do filme para aluguel. Compra deixa esse campo NULL.
+
+Somente a aprovação autenticada do pagamento, dentro do TTL do checkout, cria `acessos_streaming` na mesma transação que confirma o pedido e emite tickets. `UNIQUE(id_item)` impede duplicação; repetição coerente reutiliza o direito. Aluguel começa no horário confirmado pelo evento do gateway e expira após os dias congelados no item. Compra tem `data_expiracao=NULL`. Itens antigos sem snapshot não recebem prazo inventado e exigem revisão.
+
+`GET /api/streaming/my-accesses` retorna direitos próprios paginados, modo, vigência e disponibilidade efetiva, sem `url_reproducao` ou URL assinada. `POST /api/streaming/{accessId}/play` exige CLIENTE dono, pedido pago, acesso ativo/não vencido, filme disponível e verificação atual de idade compatível com a classificação. Menores na faixa `ATE_16` são negados enquanto autorização de reprodução por responsável não estiver integrada. Cada play revalida o direito antes e depois de pedir assinatura ao provider. A resposta de play é `no-store`, com `Referrer-Policy: no-referrer` e URL HTTPS de host permitido por até 60 segundos.
+
+O adaptador real deve assinar apenas objetos em origem privada, atestar `privateOrigin=true` e declarar hosts de entrega permitidos; o padrão é indisponível (503). Uma URL já assinada pode continuar válida pelo TTL de até 60 segundos após revogação: a origem/CDN deve oferecer revogação imediata caso o contrato exija. O fluxo de compensação de reembolso da tarefa 31 ainda precisa revogar `acessos_streaming` em transação própria e provar isso em MySQL isolado.
+
+Testes locais cobrem snapshot, concessão repetida, dono, pendência, expiração, idade, provider ausente e DTO sem origem. Migration 21 não foi aplicada; FKs, UNIQUE, rollback e autorização de play com banco real aguardam `_test` isolado. RN05 usa a precificação proporcional do módulo 28, com duração agora congelada no item.

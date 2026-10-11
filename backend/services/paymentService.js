@@ -1,6 +1,7 @@
 import { ApiError } from '../utils/ApiError.js';
 import { idString } from '../utils/dto.js';
 import { cents } from './pricingMath.js';
+import {chargeTotal} from './subscriptionBillingMath.js';
 
 const conflict=()=>new ApiError('Pagamento em conflito',409,null,'PAYMENT_CONFLICT');
 const unavailable=()=>ApiError.indisponivel();
@@ -16,13 +17,15 @@ function normalized(event){
     if(!Number.isFinite(time.getTime())||time.getTime()>Date.now()+300000)throw ApiError.validacao('Evento do gateway inválido');
     return {...event,intentionId,occurredSql:time.toISOString().replace('T',' ').replace('Z','').slice(0,23)};
 }
-export function createPaymentService({model,methods,identity,provider}){
+export function createPaymentService({model,methods,identity,provider,checkout,subscriptions}){
     const tx=(context,fn)=>identity.transaction(fn,context);
     function ready(){if(provider?.available===false||!/^[A-Za-z0-9_-]{2,40}$/.test(provider?.name??'')||typeof provider.create!=='function'||typeof provider.consult!=='function'||typeof provider.verifyWebhook!=='function')throw unavailable();}
     async function ownPayment(id,context){return tx(context,async c=>{const a=await contextActor(identity,c,context);const row=await model.byPayment(id,c);if(!row||idString(row.id_usuario)!==idString(a.id_usuario))throw ApiError.naoEncontrado();return statusDto(row);});}
     async function applyEvent(raw,type,context={}){
         const e=normalized(raw);
         return tx(context,async c=>{
+            const hint=await model.intent(e.intentionId,c);
+            if(hint?.id_pedido)await model.lockOrder(c,hint.id_pedido);
             const row=await model.intent(e.intentionId,c,true);
             if(!row||row.provider!==provider.name||!row.id_pagamento||row.moeda!=='BRL'||String(row.valor)!==e.amount||
                 (row.provider_ref&&row.provider_ref!==e.transactionId))throw conflict();
@@ -35,8 +38,19 @@ export function createPaymentService({model,methods,identity,provider}){
             if(at<last||row.pagamento_status==='APROVADO'&&e.status!=='APROVADO')return {duplicate:false,ignored:true};
             if(e.status==='PENDENTE'){await model.markObserved(c,row.id_intencao,e.occurredSql);return {duplicate:false,pending:true};}
             if(row.pagamento_status===e.status){await model.markObserved(c,row.id_intencao,e.occurredSql);return {duplicate:false,ignored:true};}
-            await model.settle(c,row,e.status,e.occurredSql,e.transactionId);
-            await identity.audit(c,e.status==='APROVADO'?'PAYMENT.APPROVED':'PAYMENT.DECLINED',row.id_pagamento,context);
+            let fulfill=false,checkoutOrder=false;
+            if(e.status==='APROVADO'){
+                const obligation=await model.obligation(c,row);
+                const expected=obligation&&(row.id_pedido?obligation.valor:chargeTotal(obligation));
+                fulfill=Boolean(obligation&&String(expected)===e.amount&&(row.id_pedido?obligation.status==='AGUARDANDO_PAGAMENTO':['PENDENTE','ATRASADO'].includes(obligation.status)));
+                checkoutOrder=Boolean(row.id_pedido&&obligation?.checkout_expira_em);
+                if(fulfill&&checkoutOrder)fulfill=await checkout.ready(c,row.id_pedido,obligation);
+                if(fulfill&&!row.id_pedido&&subscriptions)fulfill=await subscriptions.canSettle(c,row.id_cobranca);
+            }
+            await model.settle(c,row,e.status,e.occurredSql,e.transactionId,fulfill);
+            if(e.status==='APROVADO'&&fulfill&&checkoutOrder)await checkout.confirm(c,row.id_pedido,row.id_usuario,e.occurredSql);
+            if(e.status==='APROVADO'&&fulfill&&!row.id_pedido&&subscriptions)await subscriptions.activate(c,row.id_cobranca,e.occurredSql);
+            await identity.audit(c,e.status==='APROVADO'?(fulfill?'PAYMENT.APPROVED':'PAYMENT.APPROVAL_REVIEW'):'PAYMENT.DECLINED',row.id_pagamento,context);
             return {duplicate:false,status:e.status};
         });
     }
@@ -45,10 +59,16 @@ export function createPaymentService({model,methods,identity,provider}){
         const prepared=await tx(context,c=>methods.prepare(c,{orderId:input.orderId??null,chargeId:input.chargeId??null,methodId:input.methodId,key,context}));
         const dispatch=await tx(context,async c=>{
             const a=await contextActor(identity,c,context);
+            const hint=await model.intent(prepared.id,c);
+            if(hint?.id_pedido)await model.lockOrder(c,hint.id_pedido);
             const row=await model.intent(prepared.id,c,true);
             if(!row||idString(row.id_usuario)!==idString(a.id_usuario)||row.metodo_provider!==provider.name)throw conflict();
+            if(row.estado==='CANCELADA')throw conflict();
             if(row.estado!=='PREPARADA')return {send:false,payment:statusDto(row)};
             if(!row.metodo_ativo||!row.provider_token)throw conflict();
+            const obligation=await model.obligation(c,row);
+            const current=obligation&&(row.id_pedido?obligation.valor:chargeTotal(obligation));
+            if(!obligation||String(current)!==String(row.valor)||(row.id_pedido?obligation.status!=='AGUARDANDO_PAGAMENTO'||(obligation.checkout_expira_em&&Date.parse(`${String(obligation.checkout_expira_em).replace(' ','T')}Z`)<=Date.now()):!['PENDENTE','ATRASADO'].includes(obligation.status)))throw conflict();
             const id=await model.claim(c,row,provider.name);
             await identity.audit(c,'PAYMENT.DISPATCH_CLAIMED',id,context);
             return {send:true,id,token:row.provider_token,intentionId:idString(row.id_intencao),amount:String(row.valor),key:row.chave_idempotencia};

@@ -16,11 +16,12 @@ export function createLimits(config, storeFactory) {
     const ip = req => ipKeyGenerator(req.ip);
     const identity = req => {
         const challenge = typeof req.body?.challengeToken === 'string' && /^[a-f0-9]{64}$/.test(req.body.challengeToken) ? req.body.challengeToken : null;
-        const key = req.usuario?.id ?? (typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : challenge ?? 'anonymous');
+        const newsletterToken = typeof req.body?.token === 'string' && /^[a-f0-9]{64}$/.test(req.body.token) ? req.body.token : null;
+        const key = req.usuario?.id ?? (typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : challenge ?? newsletterToken ?? 'anonymous');
         return createHash('sha256').update(key).digest('hex');
     };
     const flows = {};
-    for (const [name, max] of Object.entries({ login: 10, register: 10, recovery: 5, twoFactor: 10, checkout: 20, tickets: 30, upload: 10, newsletter: 5 })) {
+    for (const [name, max] of Object.entries({ login: 10, register: 10, recovery: 5, twoFactor: 10, checkout: 20, tickets: 30, upload: 10, newsletter: 5, assistant: 20 })) {
         flows[name] = [limiter(`${name}:ip`, max, ip), limiter(`${name}:identity`, max, identity)];
     }
     return { general: limiter('general', config.rate.max, ip), flows,

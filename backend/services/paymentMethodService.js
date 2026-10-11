@@ -1,6 +1,7 @@
 import { ApiError } from '../utils/ApiError.js';
 import { idString } from '../utils/dto.js';
-import { cents, money } from './pricingMath.js';
+import { cents } from './pricingMath.js';
+import {chargeTotal} from './subscriptionBillingMath.js';
 
 const conflict = () => new ApiError('Método ou obrigação em conflito',409,null,'PAYMENT_CONFLICT');
 const unavailable = () => ApiError.indisponivel();
@@ -69,8 +70,8 @@ export function createPaymentMethodService({model,identity,provider}) {
         if(!ref||idString(ref.id_usuario)!==idString(a.id_usuario))throw ApiError.naoEncontrado();
         const method=await own(c,methodId,a.id_usuario,true);
         if(!method.provider||!method.provider_token)throw conflict();
-        const amount=orderId?ref.valor_total:money(cents(ref.valor_devido)+cents(ref.valor_multa_aplicada??'0.00'));
-        if(cents(amount)<=0n||!['AGUARDANDO_PAGAMENTO','PENDENTE','ATRASADO'].includes(ref.status))throw conflict();
+        const amount=orderId?ref.valor_total:chargeTotal(ref);
+        if(cents(amount)<=0n||!['AGUARDANDO_PAGAMENTO','PENDENTE','ATRASADO'].includes(ref.status)||(orderId&&ref.checkout_expira_em&&Date.parse(`${String(ref.checkout_expira_em).replace(' ','T')}Z`)<=Date.now()))throw conflict();
         const inserted=await model.insertIntention(c,{owner:a.id_usuario,key,orderId,chargeId,methodId,amount});
         const stored=await model.intention(a.id_usuario,key,c);
         if(idString(stored.id_metodo)!==idString(methodId)||String(stored.id_pedido??'')!==String(orderId??'')||String(stored.id_cobranca??'')!==String(chargeId??'')||String(stored.valor)!==amount)throw conflict();
