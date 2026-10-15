@@ -188,6 +188,23 @@ export default function FilmExamplePage() {
       (format === "Todos" || group.format === format) &&
       (language === "Todos" || group.language === language),
   );
+  const availabilityByCinema = CINEMAS.map((location) => {
+    const availableGroups = location.groups.filter((group) =>
+      group.times.some((session) => !session.soldOut),
+    );
+    const availableSessions = availableGroups.reduce(
+      (total, group) => total + group.times.filter((session) => !session.soldOut).length,
+      0,
+    );
+    return {
+      ...location,
+      available: availableSessions > 0,
+      availableGroups,
+      availableSessions,
+      formats: [...new Set(availableGroups.map((group) => group.format))],
+    };
+  });
+  const availableLocations = availabilityByCinema.filter((location) => location.available);
   const unitPrice = booking
     ? booking.group.price / (ticketType === "meia" ? 2 : 1)
     : 0;
@@ -208,7 +225,197 @@ export default function FilmExamplePage() {
 
   return (
     <main className="ca-film min-h-0 bg-background text-foreground">
-      <style>{PAGE_CSS + `.ca-film .cf-poster {container-type:inline-size;} .ca-film .cf-poster-type > strong {font-size:clamp(26px,10cqw,38px);letter-spacing:-.04em;max-width:100%;} .ca-film .cf-native-dialog .flex {display:flex;} .ca-film .cf-native-dialog .items-center {align-items:center;} .ca-film .cf-native-dialog .justify-between {justify-content:space-between;} .ca-film .cf-native-dialog .gap-2 {gap:8px;} .ca-film .cf-native-dialog .gap-4 {gap:16px;} .ca-film .cf-native-dialog .flex-1 {flex:1;} .ca-film .cf-native-dialog .w-full {width:100%;} .ca-film .cf-native-dialog .text-xs {font-size:12px;} .ca-film .cf-native-dialog .text-sm {font-size:14px;}`}</style>
+      <style>{PAGE_CSS + `
+.ca-film {
+  height: auto;
+  min-height: calc(100dvh - var(--cineastra-header-height, 0px));
+}
+.ca-film .cf-frame {
+  flex: 1;
+  align-items: stretch;
+  grid-template-columns: minmax(0, 1.15fr) minmax(340px, .85fr);
+  min-height: calc(100dvh - var(--cineastra-header-height, 0px) - 12px);
+  gap: 0;
+}
+.ca-film .cf-program-head {
+  padding-bottom: 22px;
+}
+.ca-film .cf-session-scroll {
+  overflow: visible;
+  padding-top: 22px;
+}
+.ca-film .cf-film-scroll {
+  overflow: visible;
+}
+.ca-film .cf-film-content {
+  max-width: 560px;
+  padding: 34px clamp(22px, 3vw, 44px);
+}
+.ca-film .cf-poster {
+  max-height: 390px;
+  max-width: 260px;
+  margin-inline: auto;
+}
+.ca-film .cf-availability {
+  margin-top: 26px;
+  padding-top: 22px;
+  border-top: 1px solid var(--border, #342B30);
+}
+.ca-film .cf-availability-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.ca-film .cf-availability-heading h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+}
+.ca-film .cf-availability-heading p {
+  margin: 5px 0 0;
+  color: var(--muted-foreground, #A59A9D);
+  font-size: 11px;
+  line-height: 1.6;
+}
+.ca-film .cf-availability-count {
+  flex: none;
+  border: 1px solid var(--border, #342B30);
+  border-radius: 999px;
+  padding: 5px 9px;
+  color: var(--primary, #CF4D63);
+  font-size: 10px;
+  font-weight: 800;
+}
+.ca-film .cf-availability-list {
+  display: grid;
+  gap: 9px;
+}
+.ca-film .cf-location-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 13px 14px;
+  text-align: left;
+  border: 1px solid var(--border, #342B30);
+  border-radius: 10px;
+  background: var(--background, #141114);
+  color: var(--foreground, #EDE6DE);
+  transition: border-color .18s, background .18s, transform .18s;
+}
+.ca-film .cf-location-card:hover {
+  border-color: var(--primary, #CF4D63);
+  transform: translateY(-1px);
+}
+.ca-film .cf-location-card[aria-pressed="true"] {
+  border-color: var(--primary, #CF4D63);
+  background: color-mix(in srgb, var(--primary, #CF4D63) 8%, var(--background, #141114));
+}
+.ca-film .cf-location-name {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.4;
+}
+.ca-film .cf-location-name svg {
+  flex: none;
+  margin-top: 1px;
+  color: var(--primary, #CF4D63);
+}
+.ca-film .cf-location-address {
+  display: block;
+  margin: 5px 0 0 25px;
+  color: var(--muted-foreground, #A59A9D);
+  font-size: 10px;
+  line-height: 1.5;
+}
+.ca-film .cf-location-detail {
+  display: block;
+  margin: 6px 0 0 25px;
+  color: var(--muted-foreground, #A59A9D);
+  font-size: 10px;
+}
+.ca-film .cf-location-status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+  text-align: right;
+}
+.ca-film .cf-location-status strong {
+  color: #54c58b;
+  font-size: 10px;
+  white-space: nowrap;
+}
+.ca-film .cf-location-status small {
+  color: var(--muted-foreground, #A59A9D);
+  font-size: 9px;
+  white-space: nowrap;
+}
+.ca-film .cf-availability-note {
+  margin: 12px 0 0;
+  color: var(--muted-foreground, #A59A9D);
+  font-size: 9px;
+  line-height: 1.7;
+}
+.ca-film .cf-session-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 16px 0 0;
+  padding: 12px 14px;
+  border: 1px solid var(--border, #342B30);
+  border-radius: 9px;
+  background: var(--card, #1B1619);
+}
+.ca-film .cf-session-summary span {
+  color: var(--muted-foreground, #A59A9D);
+  font-size: 11px;
+}
+.ca-film .cf-session-summary strong {
+  font-size: 11px;
+}
+@media (max-width: 900px) {
+  .ca-film .cf-frame {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
+  }
+  .ca-film .cf-program { order: 2; }
+  .ca-film .cf-film-scroll {
+    order: 1;
+    border-left: 0;
+    border-bottom: 1px solid var(--border, #342B30);
+  }
+  .ca-film .cf-film-content {
+    max-width: 700px;
+    padding: 28px 24px;
+  }
+  .ca-film .cf-poster {
+    max-width: 190px;
+    max-height: none;
+  }
+  .ca-film .cf-session-scroll {
+    padding: 20px 24px 36px;
+  }
+  .ca-film .cf-program-head {
+    padding: 26px 24px 0;
+  }
+}
+@media (max-width: 480px) {
+  .ca-film .cf-location-card {
+    padding: 11px;
+    gap: 8px;
+  }
+  .ca-film .cf-location-status strong { font-size: 9px; }
+  .ca-film .cf-location-status small { white-space: normal; }
+}
+ .ca-film .cf-poster {container-type:inline-size;} .ca-film .cf-poster-type > strong {font-size:clamp(26px,10cqw,38px);letter-spacing:-.04em;max-width:100%;} .ca-film .cf-native-dialog .flex {display:flex;} .ca-film .cf-native-dialog .items-center {align-items:center;} .ca-film .cf-native-dialog .justify-between {justify-content:space-between;} .ca-film .cf-native-dialog .gap-2 {gap:8px;} .ca-film .cf-native-dialog .gap-4 {gap:16px;} .ca-film .cf-native-dialog .flex-1 {flex:1;} .ca-film .cf-native-dialog .w-full {width:100%;} .ca-film .cf-native-dialog .text-xs {font-size:12px;} .ca-film .cf-native-dialog .text-sm {font-size:14px;}`}</style>
       <div className="cf-filmstrip" aria-hidden="true" />
       <div className="cf-frame">
         <section className="cf-program" aria-labelledby="cf-sessions-title">
@@ -226,7 +433,7 @@ export default function FilmExamplePage() {
               Escolha sua sessão
             </h1>
             <p className="cf-showing">
-              Horários para <strong>{movie.title}</strong>
+              Consulte os horários e escolha onde assistir <strong>{movie.title}</strong>.
             </p>
             <div className="cf-location-control">
               <label id="cf-cinema-label" className="cf-field-label">
@@ -287,6 +494,10 @@ export default function FilmExamplePage() {
           >
             <div className="cf-session-date flex items-center gap-2">
               <CalendarDays size={14} /> {day.full}
+            </div>
+            <div className="cf-session-summary" aria-live="polite">
+              <span>Local selecionado</span>
+              <strong>{cinema.name}</strong>
             </div>
             {groups.map((group) => (
               <article className="cf-session-group" key={group.id}>
@@ -366,8 +577,7 @@ export default function FilmExamplePage() {
               </div>
             )}
             <p className="cf-demo-note">
-              Programação demonstrativa. Recursos de acessibilidade mediante
-              solicitação à equipe.
+              Programação demonstrativa: os locais, datas, horários e preços são os dados cadastrados nesta página, não uma consulta de disponibilidade em tempo real. Recursos de acessibilidade mediante solicitação à equipe.
             </p>
           </div>
         </section>
@@ -416,6 +626,65 @@ export default function FilmExamplePage() {
                 <Clock3 size={13} /> {movie.duration}
               </span>
             </div>
+
+            <section className="cf-availability" aria-labelledby="cf-availability-title">
+              <div className="cf-availability-heading">
+                <div>
+                  <h3 id="cf-availability-title">Disponibilidade por localização</h3>
+                  <p>Veja em quais cinemas cadastrados este filme tem sessões disponíveis.</p>
+                </div>
+                <span className="cf-availability-count">
+                  {availableLocations.length} de {CINEMAS.length}
+                </span>
+              </div>
+
+              <div className="cf-availability-list">
+                {availabilityByCinema.map((location) => (
+                  <button
+                    type="button"
+                    key={location.id}
+                    className="cf-location-card"
+                    aria-pressed={location.id === cinemaId}
+                    onClick={() => {
+                      setCinemaId(location.id);
+                      setFormat("Todos");
+                      setLanguage("Todos");
+                      document.getElementById("cf-sessions-title")?.scrollIntoView({
+                        behavior: "smooth",
+                        block: "start",
+                      });
+                    }}
+                  >
+                    <span>
+                      <span className="cf-location-name">
+                        <MapPin size={16} />
+                        {location.name}
+                      </span>
+                      <span className="cf-location-address">{location.address}</span>
+                      {location.available && (
+                        <span className="cf-location-detail">
+                          Formatos: {location.formats.join(" · ")}
+                        </span>
+                      )}
+                    </span>
+                    <span className="cf-location-status">
+                      <strong style={{ color: location.available ? "#54c58b" : "var(--muted-foreground, #A59A9D)" }}>
+                        {location.available ? "Disponível" : "Indisponível"}
+                      </strong>
+                      <small>
+                        {location.available
+                          ? `${location.availableSessions} horários`
+                          : "Sem sessões"}
+                      </small>
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <p className="cf-availability-note">
+                Disponibilidade calculada com base nas sessões cadastradas nesta página. Horários marcados como esgotados não são contabilizados.
+              </p>
+            </section>
+
             <a className="cf-mobile-sessions" href="#cf-sessions-title">
               Ver sessões <ChevronDown size={14} />
             </a>

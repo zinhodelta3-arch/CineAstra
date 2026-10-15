@@ -21,7 +21,7 @@ const LOGO_CONFIG = [
   },
 ]
 
-const DEFAULT_LOGO = "/CineAstralogou.png"
+const DEFAULT_LOGO = "/CineAstras.png"
 
 /**
  * Resolve o caminho da logo baseado no valor do atributo data-theme do <html>
@@ -127,7 +127,7 @@ export function Header() {
             <div className="flex h-9 w-auto items-center justify-center sm:h-10">
               <img
                 src={logoSrc}
-                alt="CineAstra Logo"
+                alt="CineAstras"
                 className="h-full w-auto max-w-[150px] object-contain object-center transition-transform duration-300 group-hover:scale-105 sm:max-w-[180px]"
               />
             </div>
