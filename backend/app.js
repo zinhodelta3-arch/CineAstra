@@ -1,93 +1,263 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import dotenv from 'dotenv';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import swaggerUi from 'swagger-ui-express';
+import { readFileSync } from 'node:fs';
+import { ApiError } from './utils/ApiError.js';
+import { requestId, deadline } from './middlewares/requestMiddleware.js';
+import { logMiddleware } from './middlewares/logMiddleware.js';
+import { errorMiddleware } from './middlewares/errorMiddleware.js';
+import { createAuthMiddleware } from './middlewares/authMiddleware.js';
+import { createLimits } from './middlewares/rateLimitMiddleware.js';
+import { createJwt } from './config/jwt.js';
+import { createAccessService } from './services/accessService.js';
+import { createUserAccessModel } from './models/userAccessModel.js';
+import { createHealthService } from './services/healthService.js';
+import { createHealthController } from './controllers/healthController.js';
+import { infrastructureRoutes } from './routes/infrastructureRoutes.js';
+import { unavailableCaptchaProvider } from './providers/captchaProvider.js';
+import { unavailableIdentityProviders } from './providers/identityProviders.js';
+import { createIdentityModel } from './models/identityModel.js';
+import { createIdentityService } from './services/identityService.js';
+import { createProfileService } from './services/profileService.js';
+import { createIdentityController } from './controllers/identityController.js';
+import { identityRoutes } from './routes/identityRoutes.js';
+import { createCatalogModel } from './models/catalogModel.js';
+import { createCatalogService } from './services/catalogService.js';
+import { createCatalogController } from './controllers/catalogController.js';
+import { catalogRoutes } from './routes/catalogRoutes.js';
+import { createImageStorage } from './models/imageStorage.js';
+import { createImageUploadService } from './services/imageUploadService.js';
+import { createImageUploadController } from './controllers/imageUploadController.js';
+import { imageUploadRoutes } from './routes/imageUploadRoutes.js';
+import { createFilmGalleryModel } from './models/filmGalleryModel.js';
+import { createGalleryStorage } from './models/galleryStorage.js';
+import { createFilmGalleryService } from './services/filmGalleryService.js';
+import { createFilmGalleryController } from './controllers/filmGalleryController.js';
+import { filmGalleryRoutes } from './routes/filmGalleryRoutes.js';
+import { createVenueModel } from './models/venueModel.js';
+import { createVenueService } from './services/venueService.js';
+import { createVenueController } from './controllers/venueController.js';
+import { venueRoutes } from './routes/venueRoutes.js';
+import { createSessionModel } from './models/sessionModel.js';
+import { createSessionService } from './services/sessionService.js';
+import { createSessionController } from './controllers/sessionController.js';
+import { sessionRoutes } from './routes/sessionRoutes.js';
+import { createTeamModel } from './models/teamModel.js';
+import { createTeamService } from './services/teamService.js';
+import { createTeamController } from './controllers/teamController.js';
+import { teamRoutes } from './routes/teamRoutes.js';
+import { createTaskModel } from './models/taskModel.js';
+import { createTaskService } from './services/taskService.js';
+import { createTaskController } from './controllers/taskController.js';
+import { taskRoutes } from './routes/taskRoutes.js';
+import { createNotificationModel } from './models/notificationModel.js';
+import { createNotificationService } from './services/notificationService.js';
+import { createNotificationController } from './controllers/notificationController.js';
+import { notificationRoutes } from './routes/notificationRoutes.js';
+import { createSupplierModel } from './models/supplierModel.js';
+import { createSupplierService } from './services/supplierService.js';
+import { createSupplierController } from './controllers/supplierController.js';
+import { supplierRoutes } from './routes/supplierRoutes.js';
+import { createProductModel } from './models/productModel.js';
+import { createProductService } from './services/productService.js';
+import { createProductController } from './controllers/productController.js';
+import { productRoutes } from './routes/productRoutes.js';
+import { createCommerceGalleryModel } from './models/commerceGalleryModel.js';
+import { createCommerceGalleryService } from './services/commerceGalleryService.js';
+import { createCommerceGalleryController } from './controllers/commerceGalleryController.js';
+import { commerceGalleryRoutes } from './routes/commerceGalleryRoutes.js';
+import { join } from 'node:path';
+import { createComboModel } from './models/comboModel.js';
+import { createComboService } from './services/comboService.js';
+import { createComboController } from './controllers/comboController.js';
+import { comboRoutes } from './routes/comboRoutes.js';
+import { createInventoryModel } from './models/inventoryModel.js';
+import { createInventoryService } from './services/inventoryService.js';
+import { createInventoryController } from './controllers/inventoryController.js';
+import { inventoryRoutes } from './routes/inventoryRoutes.js';
+import { createSupplyModel } from './models/supplyModel.js';
+import { createSupplyService } from './services/supplyService.js';
+import { createSupplyController } from './controllers/supplyController.js';
+import { supplyRoutes } from './routes/supplyRoutes.js';
+import { createPricingModel } from './models/pricingModel.js';
+import { createPricingService } from './services/pricingService.js';
+import { createPricingController } from './controllers/pricingController.js';
+import { pricingRoutes } from './routes/pricingRoutes.js';
+import { unavailablePaymentProvider } from './providers/paymentProvider.js';
+import { createPaymentMethodModel } from './models/paymentMethodModel.js';
+import { createPaymentMethodService } from './services/paymentMethodService.js';
+import { createPaymentMethodController } from './controllers/paymentMethodController.js';
+import { paymentMethodRoutes } from './routes/paymentMethodRoutes.js';
+import { createPaymentModel } from './models/paymentModel.js';
+import { createPaymentService } from './services/paymentService.js';
+import { createPaymentController } from './controllers/paymentController.js';
+import { paymentRoutes,paymentWebhookRoutes } from './routes/paymentRoutes.js';
+import {createRefundModel} from './models/refundModel.js';
+import {createRefundService} from './services/refundService.js';
+import {createRefundController} from './controllers/refundController.js';
+import {refundRoutes} from './routes/refundRoutes.js';
+import {createOrderModel} from './models/orderModel.js';
+import {createOrderService} from './services/orderService.js';
+import {createOrderController} from './controllers/orderController.js';
+import {orderRoutes} from './routes/orderRoutes.js';
+import {createCheckoutService} from './services/checkoutService.js';
+import {createSeatOccupancyService} from './services/seatOccupancyService.js';
+import {createTicketModel} from './models/ticketModel.js';
+import {createTicketService} from './services/ticketService.js';
+import {createTicketController} from './controllers/ticketController.js';
+import {ticketRoutes} from './routes/ticketRoutes.js';
+import {createStreamingModel} from './models/streamingModel.js';
+import {createStreamingService} from './services/streamingService.js';
+import {createStreamingController} from './controllers/streamingController.js';
+import {streamingRoutes} from './routes/streamingRoutes.js';
+import {unavailableStreamingProvider} from './providers/streamingProvider.js';
+import {createPlanModel} from './models/planModel.js';
+import {createPlanService} from './services/planService.js';
+import {createParticipationService} from './services/participationService.js';
+import {createParticipationModel} from './models/participationModel.js';
+import {createParticipationController} from './controllers/participationController.js';
+import {participationRoutes} from './routes/participationRoutes.js';
+import {createSubscriptionBillingModel} from './models/subscriptionBillingModel.js';
+import {createSubscriptionBillingService} from './services/subscriptionBillingService.js';
+import {createIbgeIpcaProvider} from './providers/ibgeIpcaProvider.js';
+import {createPlanController} from './controllers/planController.js';
+import {planRoutes} from './routes/planRoutes.js';
+import {createNewsletterModel} from './models/newsletterModel.js';
+import {createNewsletterService} from './services/newsletterService.js';
+import {createNewsletterController} from './controllers/newsletterController.js';
+import {newsletterRoutes} from './routes/newsletterRoutes.js';
+import {unavailableNewsletterEmailProvider} from './providers/newsletterEmailProvider.js';
+import {createNewsletterDeliveryModel} from './models/newsletterDeliveryModel.js';
+import {createNewsletterDeliveryService} from './services/newsletterDeliveryService.js';
+import {createNewsletterDeliveryController} from './controllers/newsletterDeliveryController.js';
+import {newsletterDeliveryWebhookRoutes} from './routes/newsletterDeliveryRoutes.js';
+import {createSupportModel} from './models/supportModel.js';
+import {createSupportService} from './services/supportService.js';
+import {createSupportController} from './controllers/supportController.js';
+import {supportRoutes} from './routes/supportRoutes.js';
+import {createNewsletterCampaignModel} from './models/newsletterCampaignModel.js';
+import {createNewsletterCampaignService} from './services/newsletterCampaignService.js';
+import {createNewsletterCampaignController} from './controllers/newsletterCampaignController.js';
+import {newsletterCampaignRoutes} from './routes/newsletterCampaignRoutes.js';
+import {createContentModel} from './models/contentModel.js';
+import {createContentService} from './services/contentService.js';
+import {createAssistantService} from './services/assistantService.js';
+import {createContentController} from './controllers/contentController.js';
+import {contentRoutes} from './routes/contentRoutes.js';
+import {unavailableAssistantProvider} from './providers/assistantProvider.js';
+import {createReportModel} from './models/reportModel.js';
+import {createReportService} from './services/reportService.js';
+import {createReportController} from './controllers/reportController.js';
+import {reportRoutes} from './routes/reportRoutes.js';
 
-// Importar ROTAS
+const specification = JSON.parse(readFileSync(new URL('./docs/openapi.json', import.meta.url), 'utf8'));
 
-// Importar middlewares
-import { logMiddleware } from './middlewares/logMiddleware';
-import { errorMiddleware } from './middlewares/errorMiddleware';
-
-//Careggar .env
-dotenv.config();
-
-const app = express();
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-//configurações server
-const PORT = process.env.PORT || 3000;
-
-//middlewares globais
-
-app.use(helmet({
-    crossOriginResourcePolicy: { policy: 'cross-origin'}
-}))
-
-// Configuração CORS global
-app.use(cors({
-    origin: '*', // Permitir todas as origens. Ajuste conforme necessário. Ex.: 'http://meufrontend.com'
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Métodos permitidos
-    allowedHeaders: ['Content-Type', 'Authorization'], // Cabeçalhos permitidos
-    preflightContinue: false, // Não passar para o próximo middleware
-    optionsSuccessStatus: 200 // Responder com 200 para requisições OPTIONS
-}));
-
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-//servir arquivos estáticos
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
-//middleare de log
-app.use(logMiddleware);
-
-//Rotas api use
-//exemplo:
-app.use('/api/auth', authRotas);
-
-//rota raiz
-app.get('/', (req, res) => {
-    res.json({
-        sucesso: true,
-        mensagem: 'API de gestão para loja de roupas',
-        versao: '0.0.1',
-        rotas: {
-            autenticacao: '/api/auth',
-            produtos: '/api/produtos',
-            categorias: '/api/categorias',
-            subcategorias: '/api/subcategorias',
-            cores: '/api/cores',
-            tamanhos: '/api/tamanhos',
-            modelos: '/api/modelos'
-        },
-        documentacao: {
-            login: 'POST /api/auth/login',
-            registrar: 'POST /api/auth/registrar'
+export function createApp({ config, database, logQueue, retention, sessionProvider, storeFactory, identityModel, identityProviders = unavailableIdentityProviders(), captchaProvider = unavailableCaptchaProvider(), paymentProvider = unavailablePaymentProvider(), streamingProvider = unavailableStreamingProvider(), newsletterEmailProvider = unavailableNewsletterEmailProvider(), assistantProvider = unavailableAssistantProvider, ipcaProvider = createIbgeIpcaProvider(), lifecycle = { stopping: false }, registerRoutes }) {
+    const app = express();
+    app.disable('x-powered-by');
+    app.set('trust proxy', config.trustProxy.length ? config.trustProxy : false);
+    app.set('json replacer', (key, value) => typeof value === 'bigint' ? value.toString() : value);
+    const limits = createLimits(config, storeFactory);
+    const tokens = createJwt(config.jwt);
+    const identity = createIdentityService({ database, model: identityModel ?? createIdentityModel(database), config, tokens, providers: identityProviders });
+    const profile = createProfileService({ identity, config, providers: identityProviders });
+    const auth = createAuthMiddleware(tokens, createAccessService(createUserAccessModel(database), sessionProvider ?? identity.sessionProvider));
+    const dependencies = { auth, limits: limits.flows, captcha: captchaProvider };
+    app.locals.close = () => limits.close();
+    app.use(requestId);
+    app.use(logMiddleware(logQueue, { sampleRate: config.logging.sampleRate }));
+    app.use(helmet());
+    app.use(deadline(config.httpTimeout));
+    app.use(limits.general);
+    app.use(cors({ origin(origin, cb) {
+        if (!origin || config.origins.includes(origin)) cb(null, true);
+        else cb(new ApiError('Origem não permitida', 403, null, 'CORS_DENIED'));
+    }, methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key'], exposedHeaders: ['X-Request-Id', 'Retry-After'], credentials: false, maxAge: 600 }));
+    const inventory=createInventoryService({ model: createInventoryModel(database), identity });
+    const pricing=createPricingService({ model: createPricingModel(database), identity });
+    const orderModel=createOrderModel();
+    const orders=createOrderService({model:orderModel,identity,pricing});
+    const tickets=createTicketService({model:createTicketModel(database),identity});
+    const streaming=createStreamingService({model:createStreamingModel(),identity,provider:streamingProvider});
+    const notifications = createNotificationService({ model: createNotificationModel(database), identity });
+    const billing=createSubscriptionBillingService({model:createSubscriptionBillingModel(database),identity,notifications,ipca:ipcaProvider});
+    app.locals.billing=billing;
+    const content=createContentService({model:createContentModel(),identity});
+    const plans=createPlanService({model:createPlanModel(),identity,billing,contracts:content});
+    const participation=createParticipationService({model:createParticipationModel(),identity,notifications});
+    const checkout=createCheckoutService({model:orderModel,orders,identity,pricing,inventory,seats:createSeatOccupancyService(),tickets,streaming,contracts:content});
+    app.locals.checkout=checkout;
+    const paymentMethods=createPaymentMethodService({ model: createPaymentMethodModel(database), identity, provider: paymentProvider });
+    const payments=createPaymentController(createPaymentService({ model: createPaymentModel(database), methods:paymentMethods, identity, provider:paymentProvider,checkout,subscriptions:plans }));
+    app.use('/api/payments/webhooks',express.raw({type:'application/json',limit:'64kb',inflate:false}),paymentWebhookRoutes(payments));
+    const newsletterDelivery=createNewsletterDeliveryService({database,model:createNewsletterDeliveryModel(),provider:newsletterEmailProvider});
+    app.locals.newsletterDelivery=newsletterDelivery;
+    app.locals.newsletterDeliveryEnabled=newsletterEmailProvider.available!==false;
+    app.use('/api/newsletter/webhooks',express.raw({type:'application/json',limit:'64kb',inflate:false}),newsletterDeliveryWebhookRoutes(createNewsletterDeliveryController(newsletterDelivery)));
+    app.use(express.json({ limit: config.bodyLimit, strict: true, inflate: false }));
+    app.use(express.urlencoded({ limit: config.bodyLimit, extended: false, parameterLimit: 50, inflate: false }));
+    app.use(infrastructureRoutes(createHealthController(createHealthService(database, retention, lifecycle))));
+    if (config.docsEnabled && !config.production) {
+        const spec = { ...specification, servers: [{ url: config.publicOrigin }] };
+        app.get('/openapi.json', (req, res) => { res.set('Cache-Control', 'no-store'); res.json(spec); });
+        // Ajuste CSP apenas nesta UI; nenhuma lib externa, não relaxar API global.
+        app.use('/api-docs', helmet.contentSecurityPolicy({ directives: { defaultSrc: ["'self'"], scriptSrc: ["'self'"], styleSrc: ["'self'", "'unsafe-inline'"], imgSrc: ["'self'", 'data:'], connectSrc: ["'self'"], upgradeInsecureRequests: null } }),
+            (req, res, next) => { res.set('Cache-Control', 'no-store'); next(); },
+            swaggerUi.serveFiles(spec, { swaggerOptions: { persistAuthorization: false, validatorUrl: null } }),
+            swaggerUi.setup(spec, { swaggerOptions: { persistAuthorization: false, validatorUrl: null }, customSiteTitle: 'CineAstra API' }));
+    }
+    app.use(identityRoutes(createIdentityController(identity, profile), dependencies));
+    app.use(newsletterRoutes(createNewsletterController(createNewsletterService({database,model:createNewsletterModel(),emailProvider:newsletterEmailProvider})),dependencies));
+    app.use(newsletterCampaignRoutes(createNewsletterCampaignController(createNewsletterCampaignService({model:createNewsletterCampaignModel(),identity})),dependencies));
+    const support=createSupportService({model:createSupportModel(),identity,notifications});
+    app.locals.support=support;
+    app.use(supportRoutes(createSupportController(support),dependencies));
+    app.use(contentRoutes(createContentController(content,createAssistantService({identity,support,provider:assistantProvider})),dependencies));
+    app.use(reportRoutes(createReportController(createReportService({model:createReportModel(),identity,allowedRoutes:Object.keys(specification.paths).map(path=>path.replace(/\{(\w+)\}/g,':$1'))})),dependencies));
+    app.use(catalogRoutes(createCatalogController(createCatalogService({ model: createCatalogModel(database), identity, mediaHosts: config.catalog?.mediaHosts ?? [] })), dependencies));
+    const staging = createImageStorage({ ...config.imageUpload, enforceOwner: true });
+    app.use(imageUploadRoutes(createImageUploadController(createImageUploadService({
+        storage: staging,
+        authorize: context => identity.transaction(async c => {
+            if (!['ADMIN','FORNECEDOR'].includes((await identity.activeActor(c, context)).tipo_usuario)) throw ApiError.acessoNegado();
+        }, context)
+    })), dependencies));
+    app.use(filmGalleryRoutes(createFilmGalleryController(createFilmGalleryService({
+        model: createFilmGalleryModel(database), identity,
+        storage: createGalleryStorage({ directory: config.gallery?.directory, staging })
+    })), dependencies));
+    app.use(venueRoutes(createVenueController(createVenueService({ model: createVenueModel(database), identity })), dependencies));
+    app.use(sessionRoutes(createSessionController(createSessionService({ model: createSessionModel(database), identity })), dependencies));
+    app.use(teamRoutes(createTeamController(createTeamService({ model: createTeamModel(database), identity, notifications })), dependencies));
+    app.use(taskRoutes(createTaskController(createTaskService({ model: createTaskModel(database), identity })), dependencies));
+    app.use(notificationRoutes(createNotificationController(notifications), dependencies));
+    app.use(supplierRoutes(createSupplierController(createSupplierService({ model: createSupplierModel(database), identity })), dependencies));
+    app.use(productRoutes(createProductController(createProductService({ model: createProductModel(database), identity })), dependencies));
+    app.use(commerceGalleryRoutes(createCommerceGalleryController(createCommerceGalleryService({
+        model: createCommerceGalleryModel(database), identity,
+        storage: {
+            inputs: createGalleryStorage({ directory: config.gallery?.directory ? join(config.gallery.directory, 'inputs') : null, staging, namespace: 'input-images' }),
+            combos: createGalleryStorage({ directory: config.gallery?.directory ? join(config.gallery.directory, 'combos') : null, staging, namespace: 'combo-images' })
         }
-    })
-})
-
-//rota não encontrada
-app.use('*', (req, res) => {
-    res.status(404).json({
-        sucesso: false,
-        erro: 'página não encontrada',
-        mensagem: `a rota ${req.method} ${req.originalUrl} não foi encontrada`
-    })
-})
-
-//middleware de erro
-app.use(errorMiddleware);
-
-//iniciar servidor
-app.listen(PORT, () => {
-    console.log(`acesse http://localhost:${PORT}`);
-    console.log('API de gestão para loja de roupas')
-    console.log(`ambiente: ${process.env.NODE_ENV || 'development'}`)
-})
-
-export default app;
+    })), dependencies));
+    app.use(comboRoutes(createComboController(createComboService({ model: createComboModel(database), identity })), dependencies));
+    app.use(inventoryRoutes(createInventoryController(inventory), dependencies));
+    app.use(supplyRoutes(createSupplyController(createSupplyService({ model: createSupplyModel(database), identity })), dependencies));
+    app.use(pricingRoutes(createPricingController(pricing), dependencies));
+    app.use(orderRoutes(createOrderController(orders,checkout,content),dependencies));
+    app.use(ticketRoutes(createTicketController(tickets),dependencies));
+    app.use(streamingRoutes(createStreamingController(streaming),dependencies));
+    app.use(planRoutes(createPlanController(plans),dependencies));
+    app.use(participationRoutes(createParticipationController(participation),dependencies));
+    app.use(paymentMethodRoutes(createPaymentMethodController(paymentMethods), dependencies));
+    app.use(paymentRoutes(payments,dependencies));
+    app.use(refundRoutes(createRefundController(createRefundService({model:createRefundModel(database),identity,provider:paymentProvider,termsVersion:config.identity?.termsVersion})),dependencies));
+    // Ponto de composição para módulos futuros e fixtures explícitas de testes.
+    registerRoutes?.(app, dependencies);
+    app.use((req, res, next) => next(ApiError.naoEncontrado()));
+    app.use(errorMiddleware);
+    return app;
+}
+export default createApp;

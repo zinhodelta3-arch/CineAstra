@@ -1,0 +1,9 @@
+# Tarefa 30 — pagamentos, webhook e conciliação
+
+Rotas: `POST /api/payments` (Idempotency-Key, pedido XOR cobrança, método próprio), `GET /api/payments/:id`, `POST /api/payments/:id/reconcile` e `POST /api/payments/webhooks/:provider`. O cliente não altera status financeiro. A resposta de criação é 202/PENDENTE: retorno síncrono do gateway não concede aprovação.
+
+O despacho marca a intenção ENVIADA e cria pagamento PENDENTE na mesma transação antes da chamada ao provider. A chamada HTTP ocorre fora dos locks. Se houver timeout depois de possível captura, o mesmo pedido com a mesma chave retorna a intenção existente sem novo `create`; a rota de conciliação usa `consult` do provider. O adaptador deve implementar idempotência por chave no gateway e consulta confiável por chave/transação. O provider padrão continua 503.
+
+Webhook recebe bytes JSON brutos antes de `express.json`. Exige `x-payment-timestamp` dentro de cinco minutos e `x-payment-signature`; o adaptador real deve verificar criptograficamente a assinatura sobre corpo e timestamp, incluindo rotação de segredo, antes de devolver evento normalizado. Evento único por provider/ID é persistido. Valor BRL e transação são comparados à intenção, e eventos antigos/duplicados não revertem aprovação. Consulta do provider usa a mesma transição. Aprovação atualiza `pagamentos` e pedido/cobrança na mesma transação da auditoria/outbox; se a obrigação foi cancelada ou mudou de valor, grava aprovação financeira e evento `PAYMENT.APPROVAL_REVIEW` sem conceder status PAGO ao pedido.
+
+Migration `20261009_14_payments.sql` não aplicada; acrescenta vínculo único pagamento–intenção, referência externa, moeda, relógio de eventos e deduplicação. Aceite produtivo depende de adaptador real, credenciais/assinatura oficiais e MySQL `_test` isolado para concorrência, FK, locks e rollback. Emissão de direitos, estoque/cupom e reembolso ficam nos módulos correspondentes.

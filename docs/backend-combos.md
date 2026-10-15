@@ -1,0 +1,9 @@
+# Combos e composição — tarefa 24
+
+Rotas públicas: `GET /api/combos?localId=...` e `GET /api/combos/:id`. Mostram somente combos ativos com local ATIVO, composição não vazia e insumos DISPONIVEL no mesmo local, de fornecedor, conta FORNECEDOR e vínculo fornecedor-local ativos. Saldo físico não é critério desta etapa; consumo e reserva pertencem à tarefa 26. Fotos em `combos_imagens` são apresentação, não variantes comerciais nem itens de composição.
+
+ADMIN usa `POST /api/admin/combos`, `GET/PATCH/DELETE /api/admin/combos/:id` e `PUT /api/admin/combos/:id/items` para substituir a composição inteira. Cada item tem `inputId` e `quantidade` inteira positiva, sem repetição de insumo. Criação exige local e pelo menos um item válido. PATCH altera somente nome, descrição e preço base; não transfere local. Se `itens_pedido` já referencia o combo, PATCH e substituição retornam 409 para preservar a composição histórica; DELETE apenas marca `ativo = 0`. O preço armazenado é decimal exato e ainda não calcula desconto proporcional/teto de RN10; serviço comercial da tarefa 28 decidirá preço final.
+
+Migration `20261008_09_combo_location.sql` adiciona `combos.id_local` nullable e FK. Combos legados sem local ficam preservados e fora da consulta pública até saneamento explícito; a API não inventa local com base em fotos ou composição antiga. Esta é uma alteração de contrato do catálogo: novos combos precisam de `localId`; consultas públicas requerem filtro `localId` e retornam `id_local`. Auditoria de dados legados e execução do ALTER em MySQL isolado são necessárias antes do aceite.
+
+`backend/tests/combo.test.js` cobre autorização, local incompatível, itens duplicados/não positivos, visibilidade, referência histórica e arquivamento. O cenário opt-in em `backend/tests/integration/identity.mysql.test.js` verifica FK/composição/pedido. Sem `TEST_DB_*` e schema `_test` vazio, a migration e a integração SQL real não foram executadas.

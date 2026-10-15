@@ -1,0 +1,1635 @@
+
+CINEASTRA - PROMPTS DE AGENTES DE IA PARA IMPLEMENTAÇÃO DO BACKEND
+=================================================================
+
+OBJETIVO
+--------
+Este arquivo define uma sequência operacional de prompts para agentes de IA
+implementarem o backend completo do CineAstra.
+
+A sequência foi organizada para reduzir:
+- código incompleto;
+- duplicação;
+- decisões arquiteturais conflitantes;
+- regras de negócio espalhadas;
+- vulnerabilidades;
+- queries ineficientes;
+- CRUDs artificiais;
+- problemas de concorrência;
+- inconsistências entre banco, documentação e código.
+
+FONTE DE VERDADE
+----------------
+Considere como fontes principais:
+1. schema MySQL/CineAstra fornecido pelo projeto;
+2. documentação do levantamento de requisitos;
+3. RF01-RF46;
+4. RNF01-RNF36;
+5. RN01-RN26;
+6. Apêndice A - parâmetros configuráveis;
+7. estrutura atual do repositório.
+
+O banco e a documentação possuem precedência sobre suposições genéricas.
+
+NÃO invente:
+- tabelas;
+- colunas;
+- ENUMs;
+- relacionamentos;
+- regras de negócio;
+- fluxos;
+- integrações externas;
+- credenciais;
+- preços;
+- parâmetros financeiros.
+
+Caso haja conflito entre documentação, schema, migrations, seeds e código,
+identifique o conflito e registre a decisão utilizada.
+
+STACK OBRIGATÓRIA
+-----------------
+Node.js
+Express
+mysql2
+dotenv
+bcryptjs
+jsonwebtoken
+helmet
+cors
+multer
+
+Quando necessário para cumprir os requisitos:
+express-rate-limit
+biblioteca de validação
+sanitização apropriada
+testes automatizados
+ferramentas de observabilidade
+
+ARQUITETURA-BASE
+----------------
+Adaptar à arquitetura existente, sem criar uma arquitetura paralela.
+
+Preferência:
+
+src/
+  config/
+  controllers/
+  models/
+  services/
+  routes/
+  middlewares/
+  validators/
+  utils/
+  modules/
+  uploads/
+  app.js
+  server.js
+
+Princípio:
+
+routes -> middlewares/validators -> controllers -> services -> models -> MySQL
+
+Responsabilidades:
+
+ROUTES
+- definição de endpoints;
+- encadeamento de middlewares;
+- autenticação;
+- autorização;
+- rate limiting;
+- validação;
+- upload.
+
+CONTROLLERS
+- receber request;
+- extrair dados;
+- chamar services;
+- responder HTTP;
+- não conter regra de negócio complexa;
+- não conter SQL de domínio.
+
+SERVICES
+- regras de negócio;
+- transações;
+- concorrência;
+- cálculos;
+- autorização contextual;
+- orquestração de múltiplas tabelas;
+- integração com serviços externos.
+
+MODELS
+- somente acesso ao banco;
+- prepared statements;
+- queries;
+- transações quando a arquitetura escolhida centralizar isso no model;
+- paginação;
+- filtros;
+- JOINs eficientes.
+
+VALIDATORS
+- formato;
+- tipos;
+- obrigatoriedade;
+- limites;
+- listas permitidas;
+- sanitização.
+
+MIDDLEWARES
+- JWT;
+- RBAC;
+- rate limit;
+- logs;
+- segurança;
+- tratamento global de erro;
+- uploads quando aplicável.
+
+PROMPT 00 - DIAGNÓSTICO E CONTRATO ARQUITETURAL
+================================================
+
+Você é o agente responsável pela análise inicial do backend CineAstra.
+
+NÃO implemente as funcionalidades ainda.
+
+Seu objetivo é produzir um mapa técnico preciso para os próximos agentes.
+
+TAREFA
+------
+Analise integralmente:
+
+1. package.json
+2. árvore de diretórios
+3. entrypoint da API
+4. conexão MySQL
+5. variáveis de ambiente
+6. migrations
+7. seeds
+8. models existentes
+9. controllers existentes
+10. routes existentes
+11. middlewares existentes
+12. validators existentes
+13. utilitários existentes
+14. testes existentes
+15. documentação do CineAstra
+16. schema MySQL
+
+PRODUZA
+--------
+A. Arquitetura atual.
+B. Arquitetura-alvo.
+C. Arquivos que devem ser preservados.
+D. Arquivos que precisam ser criados.
+E. Arquivos que precisam ser corrigidos.
+F. Dependências já instaladas.
+G. Dependências ausentes.
+H. Entidades do banco.
+I. Relações entre entidades.
+J. Módulos de negócio.
+K. Matriz de permissões por perfil.
+L. Mapa inicial de endpoints.
+M. Operações que exigirão transação.
+N. Operações que exigirão locking/concorrência.
+O. Pontos de risco de segurança.
+P. Pontos de risco de performance.
+Q. Conflitos entre documentação e schema.
+R. Estratégia de serialização para BIGINT.
+S. Estratégia de logs e auditoria.
+
+NÃO faça:
+- refatoração prematura;
+- alteração de schema sem necessidade;
+- criação de código fictício;
+- integração externa inventada.
+
+ENTREGA OBRIGATÓRIA
+-------------------
+Crie um documento técnico no repositório:
+
+docs/backend-architecture-plan.md
+
+Esse documento será a referência obrigatória dos próximos agentes.
+
+Inclua uma seção:
+
+"DECISÕES QUE OS PRÓXIMOS AGENTES DEVEM RESPEITAR"
+
+Toda decisão arquitetural compartilhada deve ser registrada lá.
+
+FINALIZE com:
+- resumo;
+- riscos críticos;
+- dependências;
+- ordem recomendada dos próximos agentes.
+
+=================================================================
+PROMPT 01 - FUNDAÇÃO, SEGURANÇA, MYSQL, ERROS, JWT, RBAC E LOGS
+=================================================================
+
+Você é o agente responsável pela fundação do backend CineAstra.
+
+Antes de programar:
+1. Leia docs/backend-architecture-plan.md.
+2. Leia o código atual.
+3. Não contradiga as decisões do Prompt 00.
+4. Não implemente módulos de negócio ainda.
+
+IMPLEMENTE
+----------
+
+1. Configuração:
+- dotenv;
+- carregamento e validação das variáveis;
+- configuração por ambiente;
+- ausência de segredos no código.
+
+2. MySQL:
+- pool mysql2;
+- conexão reutilizável;
+- limites de pool configuráveis;
+- timeouts;
+- tratamento de falhas;
+- fechamento correto;
+- suporte a transações.
+
+3. App:
+- Express;
+- JSON limit;
+- URL encoded limit;
+- helmet;
+- CORS explícito;
+- tratamento global de erros;
+- 404;
+- health check.
+
+4. JWT:
+- geração;
+- verificação;
+- expiração;
+- segredo no .env;
+- payload mínimo;
+- middleware de autenticação.
+
+5. RBAC:
+ADMIN
+FORNECEDOR
+SUPERVISOR
+COLABORADOR
+CLIENTE
+
+Não basta token válido.
+A autorização contextual será implementada também pelos módulos.
+
+6. Rate limiting:
+- geral;
+- login;
+- cadastro;
+- recuperação de senha;
+- reset de senha;
+- 2FA;
+- checkout;
+- tickets;
+- uploads;
+- operações de criação de pedidos.
+
+7. Logs:
+- integrar com tabela logs;
+- registrar rota;
+- método;
+- status;
+- duração;
+- IP;
+- user-agent;
+- usuário autenticado quando disponível;
+- não bloquear a resposta por escrita de log.
+
+NUNCA registrar:
+- senha;
+- JWT completo;
+- refresh token se existir;
+- segredo;
+- chave 2FA;
+- dados completos de cartão.
+
+8. Erros:
+Resposta padronizada:
+
+{
+  "success": false,
+  "message": "Mensagem amigável",
+  "code": "CODIGO",
+  "details": null
+}
+
+Use:
+400
+401
+403
+404
+409
+422
+429
+500
+503
+
+Detalhes internos somente nos logs.
+
+9. Segurança:
+- preparação para HTTPS;
+- proteção contra payload excessivo;
+- preparação para Cloudflare/WAF;
+- CAPTCHA isolado por serviço/adapter;
+- proteção contra XSS;
+- proteção contra CSRF quando o modelo de autenticação exigir;
+- proteção contra mass assignment;
+- proteção contra IDOR/BOLA.
+
+10. BIGINT:
+Defina e documente como IDs BIGINT serão convertidos ao enviar JSON.
+Evite perda de precisão do JavaScript Number.
+
+TESTES
+------
+Crie testes básicos para:
+- app inicializa;
+- banco conecta;
+- JWT válido;
+- JWT inválido;
+- JWT expirado;
+- RBAC;
+- rate limiting;
+- erro global;
+- log;
+- BIGINT.
+
+NÃO implemente ainda:
+- pedidos;
+- estoque;
+- assinaturas;
+- catálogo completo;
+- suporte;
+- streaming.
+
+FINALIZE informando todos os arquivos criados/alterados.
+
+=============================================================
+PROMPT 02 - USUÁRIOS, AUTENTICAÇÃO, 2FA E PREFERÊNCIAS
+=============================================================
+
+Implemente o módulo de identidade do CineAstra.
+
+TABELAS
+-------
+usuarios
+enderecos
+contatos
+recuperacao_senha
+autenticacao_2fa
+preferencias_usuario
+
+REQUISITOS
+----------
+RF01-RF07.
+
+FUNÇÕES
+-------
+- cadastro de cliente;
+- login de todos os perfis;
+- recuperação de senha;
+- redefinição;
+- ativação/desativação de 2FA;
+- validação de 2FA;
+- perfil;
+- atualização de dados;
+- exclusão da conta quando aplicável;
+- endereços;
+- contatos;
+- métodos de pagamento serão tratados no módulo financeiro;
+- preferências.
+
+REGRAS
+------
+- fornecedor, supervisor e colaborador não realizam cadastro público;
+- contas desses perfis são criadas pela administração;
+- senha com bcryptjs;
+- nunca retornar hash;
+- política de senha;
+- confirmação de senha deve ser validada;
+- CPF único e validado;
+- e-mail único;
+- ADMIN e SUPERVISOR precisam ter 2FA ativo;
+- conta bloqueada/inativa não autentica;
+- PENDENTE_VERIFICACAO respeita o fluxo definido pela aplicação.
+
+SEGURANÇA
+---------
+- não permitir enumeração de contas em recuperação de senha;
+- tokens de recuperação com expiração;
+- token de recuperação de uso único;
+- não colocar senha ou dados sensíveis nos logs;
+- rate limit agressivo nos endpoints de autenticação;
+- proteção contra brute force;
+- resposta de login que não entregue informações desnecessárias;
+- jamais confiar no role enviado pelo cliente.
+
+2FA
+---
+Prepare abstração para:
+- APP;
+- SMS;
+- EMAIL.
+
+Não invente serviço externo real.
+
+Para TOTP ou mecanismo equivalente, segredo nunca deve ser devolvido indevidamente.
+
+LGPD
+----
+Estruture o módulo de modo a permitir:
+- acesso aos dados;
+- correção;
+- exclusão;
+- exportação;
+- consentimentos;
+- registro de base legal quando suportado pelo projeto.
+
+IDADE
+-----
+Não trate autodeclaração como validação confiável quando o fluxo exigir validação.
+Não invente um provedor de verificação de idade.
+Crie interface/adaptador quando integração externa não estiver definida.
+
+ENDPOINTS MÍNIMOS
+-----------------
+POST   /api/auth/register
+POST   /api/auth/login
+POST   /api/auth/2fa/verify
+POST   /api/auth/password/forgot
+POST   /api/auth/password/reset
+POST   /api/auth/logout
+GET    /api/users/me
+PATCH  /api/users/me
+DELETE /api/users/me
+GET    /api/users/me/addresses
+POST   /api/users/me/addresses
+PATCH  /api/users/me/addresses/:id
+DELETE /api/users/me/addresses/:id
+GET    /api/users/me/contacts
+POST   /api/users/me/contacts
+PATCH  /api/users/me/contacts/:id
+DELETE /api/users/me/contacts/:id
+GET    /api/users/me/preferences
+PUT    /api/users/me/preferences
+
+Ajuste os endpoints ao padrão existente.
+
+=======================================================
+PROMPT 03 - CATÁLOGO, FILMES E GÊNEROS
+=======================================================
+
+TABELAS
+-------
+generos
+filmes
+filme_generos
+
+IMPLEMENTE
+----------
+- CRUD de gêneros;
+- CRUD administrativo de filmes;
+- consulta pública de filmes ativos;
+- filtros;
+- paginação;
+- relacionamento filme/gênero;
+- ativar/desativar;
+- detalhes de filme;
+- preparação para imagem e trailer.
+
+REGRAS
+------
+- classificação L/10/12/14/16/18;
+- duração positiva;
+- preços não negativos;
+- aluguel/compra coerentes com disponibilidade;
+- dias de acesso válidos;
+- status ATIVO/INATIVO;
+- acesso administrativo protegido.
+
+UPLOAD
+------
+Use multer somente para recursos realmente enviados pela API.
+Validar:
+- tamanho;
+- MIME;
+- extensão;
+- nome;
+- path;
+- diretório;
+- impossibilidade de execução.
+
+NUNCA confie somente na extensão.
+
+PERFORMANCE
+-----------
+- nunca SELECT * para consultas públicas;
+- paginação;
+- filtros indexáveis;
+- evitar carregar relações gigantes;
+- utilizar JOINs eficientes.
+
+ENDPOINTS
+---------
+GET    /api/films
+GET    /api/films/:id
+POST   /api/films
+PUT    /api/films/:id
+PATCH  /api/films/:id
+DELETE /api/films/:id
+
+GET    /api/genres
+POST   /api/genres
+PUT    /api/genres/:id
+DELETE /api/genres/:id
+
+POST   /api/films/:id/genres
+DELETE /api/films/:id/genres/:genreId
+
+===========================================================
+PROMPT 04 - LOCAIS, SALAS, ASSENTOS E SESSÕES
+===========================================================
+
+TABELAS
+-------
+locais
+salas
+assentos
+sessoes
+
+REQUISITOS
+----------
+RF09
+RF29
+RF30
+RF38
+RF42
+
+IMPLEMENTE
+----------
+- CRUD de locais;
+- CRUD de salas;
+- CRUD de assentos;
+- CRUD de sessões;
+- consulta pública de sessões;
+- filtros por local/data/horário/filme;
+- consulta de assentos disponíveis.
+
+REGRAS
+------
+1. Sala pertence a local.
+2. Assento pertence a sala.
+3. Sessão relaciona filme e sala.
+4. Assento vendido em sessão deve pertencer à sala da sessão.
+5. Sessões no mesmo local precisam respeitar intervalo mínimo de 1 hora.
+6. Sessões reservadas por usuários respeitam limite de 5 horas quando aplicável.
+7. Status válidos conforme banco.
+8. Preço não negativo.
+9. Sala precisa estar válida para receber sessão.
+10. Filme precisa estar disponível para cinema quando utilizado em sessão.
+
+ASSENTOS
+--------
+Consulta deve retornar apenas:
+- assentos ativos;
+- pertencentes à sala;
+- não vendidos naquela sessão.
+
+VENDAS
+------
+O mesmo assento não pode ser vendido duas vezes.
+
+Use transação e locking quando houver risco de concorrência.
+
+Não confie apenas na validação da aplicação.
+Respeite a UNIQUE KEY do banco.
+
+ENDPOINTS
+---------
+GET    /api/locations
+POST   /api/locations
+GET    /api/locations/:id
+PUT    /api/locations/:id
+DELETE /api/locations/:id
+
+GET    /api/locations/:locationId/rooms
+POST   /api/locations/:locationId/rooms
+
+GET    /api/rooms/:roomId/seats
+POST   /api/rooms/:roomId/seats
+
+GET    /api/sessions
+GET    /api/sessions/:id
+POST   /api/sessions
+PUT    /api/sessions/:id
+DELETE /api/sessions/:id
+
+GET    /api/sessions/:id/available-seats
+
+=============================================================
+PROMPT 05 - EQUIPES, MEMBROS, CHAMADOS E NOTIFICAÇÕES
+=============================================================
+
+TABELAS
+-------
+equipes
+equipe_membros
+chamados
+notificacoes
+
+PERFIS
+------
+ADMIN
+SUPERVISOR
+COLABORADOR
+
+REQUISITOS
+----------
+RF29-RF44, conforme aplicabilidade.
+
+IMPLEMENTE
+----------
+- equipes;
+- vínculo supervisor/sessão;
+- membros;
+- funções;
+- convites/solicitações, respeitando o modelo existente;
+- chamados;
+- atribuição;
+- estados;
+- notificações.
+
+REGRAS
+------
+Supervisor:
+- gerencia equipes sob sua responsabilidade;
+- atribui funções;
+- gerencia chamados vinculados;
+- gerencia tickets vinculados à sessão;
+- consulta clientes relacionados à sessão.
+
+Colaborador:
+- entra na equipe por solicitação/convite;
+- consulta função;
+- abre/aceita/fecha chamados conforme autorização;
+- controla estoque local;
+- valida tickets atribuídos.
+
+CHAMADOS
+--------
+Status:
+ABERTO
+EM_ANDAMENTO
+RESOLVIDO
+FECHADO
+
+Prioridades:
+BAIXA
+MEDIA
+ALTA
+URGENTE
+
+NOTIFICAÇÕES
+------------
+Gerar para:
+- pedidos;
+- pagamentos;
+- tickets;
+- assinaturas;
+- cobranças;
+- atrasos;
+- convites;
+- suporte;
+- estoque;
+- outros eventos relevantes.
+
+Evitar duplicação.
+
+PERFORMANCE
+-----------
+Notificações são tabela de alto crescimento.
+Sempre paginar.
+Nunca devolver milhares de registros sem limite.
+
+=====================================================
+PROMPT 06 - FORNECEDORES, INSUMOS, EQUIPAMENTOS E COMBOS
+=====================================================
+
+TABELAS
+-------
+fornecedores
+insumos
+equipamentos
+combos
+combo_itens
+
+REQUISITOS
+----------
+RF25-RF28
+RF45
+
+IMPLEMENTE
+----------
+- CRUD fornecedores;
+- CRUD insumos;
+- CRUD equipamentos;
+- CRUD combos;
+- gerenciamento da composição dos combos;
+- filtros por local;
+- filtros por categoria;
+- disponibilidade;
+- associação com fornecedor.
+
+ATENÇÃO AO SCHEMA
+-----------------
+Verifique a versão final da tabela fornecedores.
+
+Caso existam versões com:
+nome_fantasia
+e
+nome_cine
+
+não invente equivalência silenciosa.
+Utilize a migration/schema final efetivamente aplicado.
+
+ESTOQUE
+-------
+Insumos:
+- quantidade >= 0;
+- quantidade_minima >= 0;
+- preço >= 0.
+
+Equipamentos:
+- quantidade >= 0;
+- patrimônio único quando informado.
+
+COMBOS
+------
+- preço >= 0;
+- composição com quantidade > 0;
+- item não duplicado dentro do combo;
+- respeitar disponibilidade do insumo;
+- regras de desconto ficarão concentradas no serviço de precificação/pedidos.
+
+===============================================================
+PROMPT 07 - ESTOQUE, MOVIMENTAÇÕES, SOLICITAÇÕES E LOGÍSTICA
+===============================================================
+
+TABELAS
+-------
+movimentacoes_estoque
+solicitacoes_estoque
+logistica
+
+ESTE MÓDULO É TRANSACIONAL.
+
+NÃO implemente movimentação como simples INSERT.
+
+MOVIMENTAÇÕES
+-------------
+Tipos:
+ENTRADA
+SAIDA
+AJUSTE
+PERDA
+DEVOLUCAO
+
+Regras:
+- quantidade nunca zero;
+- movimentação deve apontar para exatamente um item;
+- saída nunca pode gerar saldo negativo;
+- entrada incrementa;
+- saída/perda decrementam;
+- ajuste deve representar correção;
+- devolução respeita a semântica definida;
+- histórico não deve ser apagado para corrigir saldo.
+
+Ao modificar quantidade:
+1. validar usuário;
+2. validar item;
+3. abrir transação;
+4. bloquear linha necessária;
+5. consultar saldo;
+6. validar operação;
+7. atualizar estoque;
+8. registrar movimentação;
+9. gerar alerta caso o mínimo seja atingido;
+10. commit.
+
+Em erro:
+ROLLBACK.
+
+SOLICITAÇÕES
+------------
+Status:
+PENDENTE
+APROVADA
+RECUSADA
+FINALIZADA
+
+Validar:
+- item;
+- quantidade positiva;
+- local;
+- sessão;
+- autorização;
+- contexto do usuário.
+
+LOGÍSTICA
+---------
+Status:
+PENDENTE
+ENVIADO
+EM_TRANSITO
+RECEBIDO
+CANCELADO
+
+Implementar:
+- envio;
+- acompanhamento;
+- recebimento;
+- cancelamento;
+- vínculo com solicitação;
+- fornecedor;
+- destino.
+
+Tempo de entrega:
+o projeto define cálculo relacionado à distância entre origem física e destino.
+Não invente um provedor de geolocalização caso não exista.
+Isole o cálculo em service/provider.
+
+ALERTAS
+-------
+Se estoque <= estoque mínimo:
+- disponibilizar estado de alerta;
+- notificar perfis autorizados quando aplicável.
+
+PERFORMANCE
+-----------
+movimentacoes_estoque cresce muito.
+Sempre paginar e filtrar por período/item/tipo/usuário.
+
+========================================================
+PROMPT 08 - CUPONS, PEDIDOS, ITENS, TICKETS E CHECKOUT
+========================================================
+
+TABELAS
+-------
+cupons
+pedidos
+itens_pedido
+tickets
+
+ESTE É UM DOS MÓDULOS MAIS CRÍTICOS.
+
+NÃO implementar apenas CRUD.
+
+PEDIDO
+------
+O backend é a fonte de verdade do preço.
+
+Nunca confiar em:
+valor_total
+subtotal
+valor_unitario
+desconto
+preço do produto
+preço do ingresso
+
+enviados pelo frontend.
+
+Ao criar pedido:
+1. validar usuário;
+2. buscar dados confiáveis no banco;
+3. buscar preços atuais;
+4. validar disponibilidade;
+5. validar sessão;
+6. validar assento;
+7. validar estoque;
+8. validar cupom;
+9. validar benefícios do plano;
+10. calcular descontos;
+11. aplicar regras de meia-entrada;
+12. verificar margem;
+13. calcular subtotal;
+14. calcular total;
+15. criar pedido;
+16. criar itens;
+17. reservar/consumir recursos;
+18. efetuar ou preparar pagamento;
+19. gerar tickets quando permitido;
+20. gerar notificações;
+21. commit.
+
+Use transação.
+
+ASSENTOS
+--------
+Para item de sessão:
+- id_sessao obrigatório;
+- id_assento obrigatório;
+- quantidade exatamente 1;
+- assento deve pertencer à sala;
+- não pode estar vendido;
+- respeitar classificação indicativa;
+- respeitar meia-entrada.
+
+MEIA-ENTRADA
+------------
+Aplicar conforme a documentação e os requisitos legais especificados no projeto.
+
+Não acumular com promoção no mesmo ingresso.
+
+O benefício não entra no teto de descontos acumulados.
+
+Registrar evidências/documentação necessárias somente de forma compatível com LGPD.
+
+DESCONTOS
+---------
+Plano + combo + cupom + promoção:
+máximo acumulado de 25%.
+
+Meia-entrada:
+fora do teto;
+não cumulativa com promoções no mesmo ingresso.
+
+Preço final:
+nunca abaixo do custo.
+
+MARGEM
+-------
+Margem líquida projetada < 20%:
+gerar alerta para administração.
+
+CUPOM
+-----
+Validar:
+- existência;
+- ativo;
+- validade;
+- limite de uso;
+- regras de cumulatividade;
+- percentual entre 0 e 100.
+
+TICKETS
+-------
+Tipos:
+INGRESSO_SESSAO
+RETIRADA_INSUMO
+ACESSO_STREAMING
+
+Estados:
+GERADO
+UTILIZADO
+CANCELADO
+EXPIRADO
+
+O mesmo ticket não pode ser utilizado indevidamente.
+
+ENDPOINTS
+---------
+POST   /api/orders
+GET    /api/orders
+GET    /api/orders/:id
+PATCH  /api/orders/:id
+POST   /api/orders/:id/finalize
+POST   /api/orders/:id/cancel
+POST   /api/orders/:id/refund
+
+GET    /api/tickets
+GET    /api/tickets/:id
+POST   /api/tickets/:id/validate
+POST   /api/tickets/:id/use
+POST   /api/tickets/:id/cancel
+
+========================================================
+PROMPT 09 - STREAMING
+========================================================
+
+TABELAS
+-------
+acessos_streaming
+itens_pedido
+filmes
+
+REQUISITOS
+----------
+RF08.
+
+IMPLEMENTE
+----------
+- aluguel;
+- compra;
+- início do acesso;
+- verificação de acesso;
+- expiração;
+- revogação;
+- consulta dos acessos do usuário.
+
+REGRAS
+------
+Aluguel:
+- data de início definida pelo fluxo;
+- data de expiração calculada;
+- duração proveniente da regra de negócio/pedido.
+
+Compra:
+- sem expiração quando definido como aquisição definitiva.
+
+Nunca liberar acesso sem:
+- usuário autorizado;
+- item de pedido válido;
+- condição de pagamento atendida;
+- filme correto.
+
+ENDPOINTS
+---------
+POST   /api/streaming/rent
+POST   /api/streaming/buy
+GET    /api/streaming/my-accesses
+GET    /api/streaming/:id
+POST   /api/streaming/:id/revoke
+
+Não expor arquivos de mídia diretamente sem autorização adequada.
+
+=============================================================
+PROMPT 10 - PLANOS, ASSINATURAS, CONVITES, COBRANÇAS E PAGAMENTOS
+=============================================================
+
+TABELAS
+-------
+metodos_pagamento
+planos
+assinaturas
+convites_plano
+assinatura_cobrancas
+pagamentos
+
+ESTE MÓDULO É FINANCEIRO.
+
+REQUISITOS
+----------
+RF16-RF20
+RN09
+RN12
+RN26
+
+MÉTODOS DE PAGAMENTO
+--------------------
+Suportar:
+CREDITO
+DEBITO
+PIX
+BOLETO
+
+NUNCA armazenar dados completos de cartão.
+
+Utilizar tokenização/gateway quando houver integração.
+
+Se não houver integração real:
+- criar interface;
+- criar provider abstrato;
+- não fingir que o pagamento externo ocorreu.
+
+PLANOS
+------
+CRUD administrativo.
+
+Respeitar:
+- valores >= 0;
+- desconto válido;
+- limite de membros;
+- benefícios conforme configuração existente.
+
+ASSINATURAS
+-----------
+Implementar:
+- contratação;
+- cancelamento;
+- renovação;
+- mensal;
+- anual;
+- pagador único;
+- divisão igual;
+- convites;
+- saída de participante.
+
+DIVISÃO IGUAL
+-------------
+Dividir conforme participantes incluídos.
+
+Entrada/saída:
+- alteração das cotas a partir do ciclo seguinte;
+- avisar participantes.
+
+COBRANÇAS
+---------
+Status:
+PENDENTE
+PAGO
+ATRASADO
+ISENTO
+
+Aplicar:
+- multa de 2%;
+- juros de 1% ao mês pro rata die;
+- atualização conforme regra documentada;
+- suspensão de benefícios no 8º dia;
+- cancelamento por inadimplência após 30 dias;
+- não constranger usuário;
+- não afetar direitos de itens já pagos.
+
+PAGAMENTOS
+----------
+Referenciar exclusivamente:
+pedido OU cobrança.
+
+Nunca ambos.
+
+Usar transação em operações de atualização de estado.
+
+ARREPENDIMENTO/REEMBOLSO
+------------------------
+Implementar fluxo compatível com a documentação:
+- solicitação pelo sistema;
+- confirmação do recebimento;
+- processamento na mesma ferramenta;
+- respeito à janela de 7 dias;
+- regras posteriores conforme termos;
+- registro do processo.
+
+Não inventar integração com operadora.
+
+====================================================================
+PROMPT 11 - SUPORTE, REEMBOLSOS, RELATÓRIOS E ADMINISTRAÇÃO
+====================================================================
+
+TABELAS
+-------
+suporte
+logs
+e entidades relacionadas conforme necessidade
+
+REQUISITOS
+----------
+RF21-RF24
+RF46
+
+SUPORTE
+-------
+Implementar:
+- abertura;
+- leitura;
+- atendimento;
+- resposta;
+- resolução;
+- fechamento;
+- fila;
+- associação cliente/atendente.
+
+Regras:
+- atendimento ao vivo com limite operacional;
+- demanda permanece aberta quando necessário;
+- resposta em até 5 dias conforme documentação;
+- mensagens claras;
+- notificações.
+
+IA
+--
+A IA do CineAstra:
+- deve se identificar como IA;
+- deve responder dúvidas sobre o serviço;
+- deve permitir encaminhamento ao suporte humano.
+
+Não coloque a lógica da IA dentro de controller transacional.
+Use adapter/service separado.
+
+ADMIN
+-----
+Criar APIs administrativas para:
+- usuários;
+- fornecedores;
+- filmes;
+- locais;
+- sessões;
+- suporte;
+- pedidos;
+- tickets;
+- equipamentos;
+- insumos;
+- endereços;
+- contatos;
+- planos;
+- assinaturas;
+- assinantes;
+- chamados;
+- equipes;
+- combos;
+- cupons;
+- promoções quando existir entidade correspondente.
+
+Não crie tabela de promoções se ela não existir no schema.
+Caso o requisito cite promoção, registre a ausência estrutural.
+
+LOGS
+----
+Permitir consulta administrativa com:
+- paginação;
+- filtros;
+- período;
+- status HTTP;
+- usuário;
+- rota;
+- método.
+
+NUNCA exibir segredos.
+
+RELATÓRIOS
+----------
+Implementar consultas orientadas aos requisitos, como:
+- vendas;
+- sessões;
+- faturamento;
+- estoque;
+- inadimplência;
+- tickets;
+- streaming;
+- margem.
+
+Evitar consultas ilimitadas.
+Utilizar filtros obrigatórios quando necessário.
+
+============================================================
+PROMPT 12 - AUDITORIA FINAL, TESTES, SEGURANÇA E OTIMIZAÇÃO
+============================================================
+
+Você é o auditor final do backend CineAstra.
+
+Leia:
+- docs/backend-architecture-plan.md;
+- todo código;
+- migrations;
+- seeds;
+- testes;
+- documentação do projeto.
+
+NÃO crie funcionalidades novas arbitrariamente.
+
+Seu trabalho é procurar defeitos e corrigi-los.
+
+1. AUDITORIA DE SEGURANÇA
+-------------------------
+Verifique:
+
+SQL Injection
+XSS
+CSRF
+IDOR/BOLA
+mass assignment
+brute force
+credential stuffing
+enumeração
+replay
+race conditions
+path traversal
+upload malicioso
+JWT fraco
+segredos expostos
+logs com dados sensíveis
+dados de cartão armazenados
+
+Para cada endpoint protegido:
+- autenticação;
+- role;
+- propriedade;
+- contexto;
+- vínculo.
+
+2. AUTENTICAÇÃO
+---------------
+- bcryptjs;
+- JWT;
+- expiração;
+- contas bloqueadas;
+- 2FA;
+- recuperação;
+- reset;
+- rate limit.
+
+3. BANCO
+--------
+Compare cada model com schema.
+
+Verifique:
+- tabela;
+- coluna;
+- tipo;
+- FK;
+- ENUM;
+- CHECK;
+- UNIQUE;
+- índices.
+
+4. TRANSAÇÕES
+-------------
+Procure operações que possam falhar no meio.
+
+Especial atenção:
+- compra;
+- pagamento;
+- assento;
+- estoque;
+- ticket;
+- assinatura;
+- cobrança;
+- reembolso.
+
+5. CONCORRÊNCIA
+---------------
+Simule:
+- duas compras para o mesmo assento;
+- duas saídas do mesmo estoque;
+- duas utilizações do mesmo ticket;
+- duas alterações de assinatura;
+- dois pagamentos para mesma obrigação.
+
+6. PERFORMANCE
+--------------
+Procure:
+- SELECT *;
+- ausência de paginação;
+- ausência de LIMIT;
+- N+1;
+- queries em loops;
+- índices duplicados;
+- JOINs desnecessários;
+- consultas sem filtro;
+- tabelas de alto volume sem paginação;
+- payloads enormes;
+- JSON excessivo em logs.
+
+7. BIGINT
+---------
+Verifique serialização JSON dos IDs BIGINT.
+
+8. LOGS
+-------
+Verifique:
+- não bloquear request;
+- não registrar senha;
+- não registrar tokens;
+- não registrar chave 2FA;
+- não registrar cartão;
+- registrar dados suficientes para auditoria.
+
+9. REGRAS DE NEGÓCIO
+--------------------
+Teste explicitamente:
+
+RN01-RN26.
+
+Principalmente:
+- RBAC;
+- preços;
+- descontos;
+- margem;
+- meia-entrada;
+- estoque;
+- sessões;
+- tickets;
+- inadimplência;
+- assinaturas;
+- cancelamento;
+- reembolso;
+- classificação indicativa.
+
+10. TESTES
+----------
+Criar/executar testes de:
+- sucesso;
+- validação;
+- autorização;
+- recursos de outro usuário;
+- conflito;
+- concorrência;
+- banco;
+- pagamentos;
+- estoque;
+- assento;
+- ticket;
+- cupom;
+- assinatura;
+- rate limiting;
+- SQL Injection;
+- upload.
+
+11. LIMPEZA
+----------
+Remover:
+- TODO;
+- pseudocódigo;
+- funções mortas;
+- imports quebrados;
+- código duplicado;
+- console.log inadequado;
+- stack trace exposto;
+- credenciais;
+- endpoints abandonados.
+
+12. CRITÉRIO FINAL
+-----------------
+O backend só pode ser considerado concluído se:
+- builds/testes estiverem coerentes;
+- imports funcionarem;
+- endpoints responderem;
+- regras críticas estiverem cobertas;
+- segurança mínima estiver implementada;
+- banco estiver consistente;
+- erros estiverem padronizados;
+- não existirem pendências críticas conhecidas.
+
+RELATÓRIO FINAL
+---------------
+Criar:
+
+docs/backend-final-audit.md
+
+Estrutura:
+
+1. Resumo executivo
+2. Arquivos criados
+3. Arquivos alterados
+4. Dependências
+5. Endpoints
+6. RF cobertos
+7. RNF cobertos
+8. RN cobertos
+9. Testes realizados
+10. Vulnerabilidades encontradas
+11. Correções realizadas
+12. Riscos remanescentes
+13. Pendências reais
+14. Melhorias futuras que não são necessárias para o escopo atual
+
+====================================================================
+MATRIZ DE ORDEM DE EXECUÇÃO
+====================================================================
+
+01. Prompt 00
+    Diagnóstico e contrato arquitetural
+
+02. Prompt 01
+    Fundação, segurança e infraestrutura
+
+03. Prompt 02
+    Usuários e autenticação
+
+04. Prompt 03
+    Catálogo
+
+05. Prompt 04
+    Locais, salas, assentos e sessões
+
+06. Prompt 05
+    Equipes, chamados e notificações
+
+07. Prompt 06
+    Fornecedores, insumos, equipamentos e combos
+
+08. Prompt 07
+    Estoque e logística
+
+09. Prompt 08
+    Pedidos, tickets e checkout
+
+10. Prompt 09
+    Streaming
+
+11. Prompt 10
+    Assinaturas e pagamentos
+
+12. Prompt 11
+    Suporte e administração
+
+13. Prompt 12
+    Auditoria final
+
+====================================================================
+REGRAS GLOBAIS QUE TODOS OS AGENTES DEVEM RESPEITAR
+====================================================================
+
+1. Não inventar requisitos.
+2. Não confiar em dados enviados pelo frontend.
+3. Validar tudo no backend.
+4. Não concatenar input em SQL.
+5. Usar placeholders/prepared statements.
+6. Usar transação em operações críticas.
+7. Respeitar concorrência.
+8. Não confiar apenas em JWT válido.
+9. Aplicar autorização contextual.
+10. Não retornar dados sensíveis.
+11. Não armazenar cartão completo.
+12. Não registrar senha ou token.
+13. Não criar CRUD artificial onde houver operação de domínio.
+14. Não apagar histórico financeiro/operacional sem justificativa explícita.
+15. Não remover constraints do banco para facilitar implementação.
+16. Não desabilitar validação para fazer testes passarem.
+17. Não adicionar índices indiscriminadamente.
+18. Utilizar paginação em tabelas de crescimento alto.
+19. Evitar SELECT *.
+20. Evitar N+1.
+21. Tratar BIGINT com segurança.
+22. Manter controllers finos.
+23. Concentrar regras em services.
+24. Manter SQL nos models/repositórios.
+25. Manter autenticação/autorização em middleware + service conforme necessário.
+26. Não expor stack trace ao usuário.
+27. Não deixar funções incompletas.
+28. Não usar pseudocódigo no código entregue.
+29. Não usar TODO como substituto de implementação.
+30. Não inventar integração com gateway, CAPTCHA, Cloudflare, e-mail, SMS,
+    geolocalização ou IA sem fornecedor/configuração real.
+31. Isolar integrações externas em adapters/providers.
+32. Fazer alterações pequenas e justificáveis.
+33. Preservar compatibilidade com o código existente.
+34. Documentar conflitos encontrados.
+35. Executar testes antes de considerar o módulo concluído.
+
+====================================================================
+CRITÉRIO DE ENTREGA DOS AGENTES
+====================================================================
+
+Ao terminar um módulo, o agente deve entregar:
+
+1. arquivos criados;
+2. arquivos alterados;
+3. endpoints;
+4. tabelas utilizadas;
+5. regras implementadas;
+6. middlewares aplicados;
+7. transações utilizadas;
+8. testes executados;
+9. problemas encontrados;
+10. limitações reais.
+
+Formato:
+
+STATUS: CONCLUÍDO | CONCLUÍDO COM PENDÊNCIAS | BLOQUEADO
+
+ARQUIVOS:
+...
+
+ENDPOINTS:
+...
+
+REGRAS:
+...
+
+SEGURANÇA:
+...
+
+TESTES:
+...
+
+PROBLEMAS:
+...
+
+PENDÊNCIAS:
+...
+
+====================================================================
+NOTAS DE CAPACIDADE E BANCO
+====================================================================
+
+O projeto utiliza BIGINT UNSIGNED em entidades de alto crescimento, incluindo:
+- pedidos;
+- itens_pedido;
+- tickets;
+- pagamentos;
+- movimentacoes_estoque;
+- notificacoes;
+- acessos_streaming;
+- assinatura_cobrancas.
+
+As demais entidades de cadastro/referência utilizam INT UNSIGNED conforme
+o schema.
+
+Não converter IDs sem necessidade.
+
+Não criar cópias redundantes de tabelas ou índices.
+
+Tabelas de alto crescimento devem ser consultadas com filtros e paginação.
+
+O middleware de logs deve respeitar a estratégia de retenção/expurgo já
+definida no projeto e não deve gerar carga excessiva.
+
+====================================================================
+FIM
+====================================================================

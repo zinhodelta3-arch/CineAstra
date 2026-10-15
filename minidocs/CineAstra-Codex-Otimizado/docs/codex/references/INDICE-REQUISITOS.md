@@ -1,0 +1,112 @@
+# Índice de requisitos
+
+Resumos de localização; regras em vários parágrafos exigem consultar o trecho completo.
+
+- **RF01** — O cliente pode se cadastrar por conta própria, com aceite obrigatório dos Termos de Uso e da Política de Privacidade e com verificação de idade (RN24); 
+- **RF02** — Todos os perfis podem fazer login. Contas de fornecedores, supervisores e colaboradores são criadas pela administração; 
+- **RF03** — O usuário pode recuperar a senha por e-mail; 
+- **RF04** — O usuário pode ativar a verificação em duas etapas (2FA) por número de telefone, e-mail ou aplicativo autenticador. A ativação é obrigatória para administradores e supervisores; 
+- **RF05** — O cliente pode editar e excluir seus dados e sua conta; 
+- **RF06** — O cliente pode cadastrar endereços, meios de contato e métodos de pagamento; 
+- **RF07** — O cliente pode personalizar a interface por motivos estéticos e de acessibilidade (tema, tamanho de fonte, cores). 
+- **RF08** — O cliente pode alugar ou comprar filmes para streaming; 
+- **RF09** — O cliente pode consultar sessões disponíveis por local, data e horário; 
+- **RF10** — O cliente pode comprar ingressos para participar de sessões, gerando um ticket. A meia-entrada é aplicada quando cabível (RN23); 
+- **RF11** — O cliente pode comprar insumos, gerando um ticket; 
+- **RF12** — O cliente pode comprar combos, gerando um ticket; 
+- **RF13** — Os pedidos são organizados por tickets; 
+- **RF14** — O cliente pode acompanhar o estado dos pedidos: agendado, em realização, atrasado, participando ou finalizado; 
+- **RF15** — O cliente pode finalizar pedidos por meio de compra, aplicando cupons e descontos dentro dos limites da RN16. 
+- **RF16** — O cliente pode assinar planos para acessar o catálogo, além do aluguel avulso. Os planos dão descontos maiores, combos exclusivos, mais cupons e um combo médio gratuito por mês. Os benefícios variam conforme o plano; 
+- **RF17** — O titular pode compartilhar o plano com outros clientes por convite, definindo a modalidade de pagamento (RF18); 
+- **RF18** — A assinatura é paga mensal ou anualmente, por débito automático, cartão de crédito ou Pix Automático. O pagamento pode ser negociado entre os participantes em uma de duas modalidades: pagador único (o titular arca com o valor total) ou divisão igual entre todos os participantes incluídos (RN09); 
+- **RF19** — O titular pode cancelar a assinatura pelo próprio sistema, e cada participante pode se desvincular do plano (RN26) (novo); 
+- **RF20** — O cliente tem diversas opções de pagamento para compras avulsas. 
+- **RF21** — O cliente pode conversar com uma IA especializada para tirar dúvidas sobre o serviço. A IA deve se identificar como tal e oferecer encaminhamento ao suporte humano (novo); 
+- **RF22** — O cliente pode consultar o FAQ e enviar mensagens à equipe ADMIN, que atua como suporte; 
+- **RF23** — O cliente recebe notificações in-site sobre promoções, descontos, combos, respostas do suporte, convites de planos e avisos de cobrança ou atraso de assinatura; 
+- **RF24** — O cliente pode acessar páginas institucionais: equipe, história, reputação, parcerias, campanhas sociais, Termos de Uso e Política de Privacidade. 
+- **RF25** — Gerenciar o estoque por local; 
+- **RF26** — Adicionar, editar e excluir equipamentos, insumos, brindes e utensílios, conforme a disponibilidade em cada local; 
+- **RF27** — Gerenciar a logística disponível para envio e recebimento de materiais; 
+- **RF28** — Verificar o status da sessão e o uso de equipamentos para decidir sobre devoluções. 
+- **RF29** — Verificar as sessões marcadas e vincular-se a elas, entrando na equipe responsável; 
+- **RF30** — Gerenciar horários de sessão e local; 
+- **RF31** — Verificar insumos e equipamentos locais (em estoque, a chegar ou sem estoque) e solicitar os que estiverem faltando; 
+- **RF32** — Criar, editar e excluir chamados; 
+- **RF33** — Atribuir funções e tarefas aos membros da equipe; 
+- **RF34** — Verificar e gerenciar os tickets vinculados e atribuídos à sessão; 
+- **RF35** — Verificar entradas, saídas, histórico e atrasos; 
+- **RF36** — Consultar e gerenciar os clientes vinculados às sessões sob sua responsabilidade. 
+- **RF37** — Entrar em equipes por solicitação ou convite do supervisor; 
+- **RF38** — Verificar o status da sessão; 
+- **RF39** — Verificar a função atual e as tarefas atribuídas (vinculadas a chamados); 
+- **RF40** — Verificar, abrir, aceitar e fechar chamados; 
+- **RF41** — Validar entradas e saídas (ingressos e tickets), conferindo, quando aplicável, o documento de comprovação da meia-entrada; 
+- **RF42** — Verificar os clientes vinculados à sessão; 
+- **RF43** — Controlar o estoque local e criar pedidos de insumos não planejados; 
+- **RF44** — Solicitar equipamentos e insumos faltantes. 
+- **RF45** — Verificar, criar, editar e excluir os seguintes registros: usuários, fornecedores, filmes, locais, sessões, suporte, pedidos e tickets, equipamentos, insumos, equipamentos locais, insumos locais, endereços, contatos, planos e assinaturas, assinantes, chamados, equipes, combos, cupons e promoções; 
+- **RF46** — Consultar logs de auditoria e relatórios do sistema, incluindo alertas de margem abaixo do mínimo (RN18) e configurar os parâmetros financeiros (Apêndice A). 
+- **RNF01** — Qualquer página deve carregar em até 2 segundos em condições normais de rede; 
+- **RNF02** — Nenhuma operação deve ultrapassar 10 segundos. Se isso ocorrer, o sistema exibe feedback ou erro claro; 
+- **RNF03** — O clique deve ter resposta visual imediata; 
+- **RNF04** — O sistema exibe tela de carregamento e skeletons durante o carregamento de componentes; 
+- **RNF05** — O envio de arquivos deve ser rápido e coerente, com validação de tipo e tamanho e exibição de prévia; 
+- **RNF06** — A navegação não deve travar. Com recursos insuficientes, o sistema reduz a fluidez (animações e efeitos) em vez de travar. 
+- **RNF07** — O sistema não permite valores ilógicos, como preço negativo ou estoque decimal. A validação ocorre no front-end e no back-end; 
+- **RNF08** — O funcionamento deve ser estável e contínuo, com meta de disponibilidade mensal de 99,5%; 
+- **RNF09** — Os erros são notificados ao usuário com mensagem clara; 
+- **RNF10** — Um erro não interrompe o site inteiro. Os demais serviços permanecem disponíveis, e recarregar a página ou voltar à home remove a mensagem de erro; 
+- **RNF11** — Em caso de erro fatal, o sistema exibe mensagem orientando o contato com o administrador; 
+- **RNF12** — O funcionamento do sistema é transparente para o usuário. Dados simulados devem ser identificados, explicados e justificados. 
+- **RNF13** — O cadastro exige dupla digitação da senha e política de complexidade mínima; 
+- **RNF14** — A senha fica oculta por padrão, e o usuário pode escolher exibi-la; 
+- **RNF15** — Um usuário por CPF, com validação do documento (fornecedores: CNPJ); 
+- **RNF16** — Verificação em duas etapas disponível para todos os usuários e obrigatória para administradores e supervisores; 
+- **RNF17** — Proteção contra ataques ao servidor, como SQL Injection, XSS e CSRF; 
+- **RNF18** — Limitação de requisições por IP (rate limiting) via middleware, com registro em logs; 
+- **RNF19** — Portas e demais configurações sensíveis (chaves e credenciais) ficam em variáveis de ambiente (.env), fora do versionamento; 
+- **RNF20** — Uso de CAPTCHA em fluxos sensíveis e de Cloudflare (proteção contra DDoS e WAF); 
+- **RNF21** — Senhas armazenadas com hash seguro (bcrypt ou Argon2) e tráfego protegido por HTTPS (novo); 
+- **RNF22** — O sistema não armazena dados completos de cartão. Usa tokenização via gateway de pagamento (novo); 
+- **RNF23** — Conformidade com a LGPD: consentimento, acesso, correção, portabilidade e exclusão de dados, com base legal registrada para cada tratamento (novo). 
+- **RNF24** — O sistema deve ser visualmente agradável e organizado, com componentes coerentes visual e funcionalmente; 
+- **RNF25** — Todas as informações em tela devem ser legíveis e visíveis, com contraste adequado (referência: WCAG 2.1 AA); 
+- **RNF26** — Ferramentas de acessibilidade: alteração do tamanho da fonte, modos para daltonismo, compatibilidade com leitores de tela e narração para deficiência visual grave, e tradução em Libras; 
+- **RNF27** — O sistema deve ser intuitivo e inclusivo para públicos diversos. 
+- **RNF28** — O sistema deve ser mobile-first; 
+- **RNF29** — O sistema deve se adequar a todos os tamanhos de tela; 
+- **RNF30** — O sistema deve ter comportamento funcional consistente em todos os dispositivos e nos navegadores modernos; 
+- **RNF31** — A leitura de inputs (toque, mouse e teclado) deve ser consistente em todos os dispositivos. 
+- **RNF32** — O código deve ser organizado e intuitivo, permitindo entender as lógicas posteriormente; 
+- **RNF33** — O código deve ser dividido em componentes padronizados, permitindo edição separada; 
+- **RNF34** — O sistema deve ter mensagens de erro claras para debug, com detalhes técnicos apenas em logs e nunca expostos ao usuário; 
+- **RNF35** — O sistema deve suportar mudança contínua no código; 
+- **RNF36** — O sistema não deve ir ao ar com pendências críticas nem com necessidade de manutenção corretiva severa contínua. 
+- **RN01** — É vedado ao usuário praticar ações que prejudiquem intencionalmente o sistema ou o negócio. A violação sujeita o usuário a advertência, suspensão ou banimento, conforme os Termos de Uso; 
+- **RN02** — Cada usuário acessa somente as ferramentas e os recursos do seu perfil; 
+- **RN03** — Pedidos de reembolso e o exercício do direito de arrependimento (7 dias, CDC, art. 49) são feitos pelo próprio sistema, na mesma ferramenta usada na contratação, com confirmação imediata do recebimento e estorno junto à operadora do cartão. Reembolsos por defeito ou falha seguem as condições dos Termos. As demandas são respondidas em até 5 dias (Decreto nº 7.962/2013); 
+- **RN04** — O usuário arca com os preços estipulados pelo sistema. Preço total, taxas, encargos e descontos devem ser exibidos com clareza antes da confirmação do pagamento. 
+- **RN05** — O preço do aluguel de filmes é proporcional ao tempo de acesso disponível; 
+- **RN06** — O preço das assinaturas é justificado pela qualidade do serviço e pela quantidade de benefícios de cada plano. Deve cobrir o custo dos benefícios incluídos (acesso ao catálogo, combo médio mensal, combos exclusivos, cupons e descontos) e manter a margem líquida mínima de 20% (RN18); 
+- **RN07** — O preço-base do ingresso é calculado dividindo-se a soma do custo fixo local de aluguel pelo tempo de uso no dia e do custo estimado de exibição do filme pela ocupação de referência (20 pessoas), acrescido da margem de precificação de 60% (RN18). Assim, mesmo com meia-entrada em até 50% dos ingressos, a sessão mantém margem líquida mínima de 20% na ocupação de referência, preservando o caráter popular do serviço; 
+- **RN08** — O preço-base dos insumos é calculado sobre o custo (receita mais valor de parceria), acrescido da margem de precificação de 60% (RN18). Com o teto de 25% de descontos acumulados (RN16), a margem líquida não fica abaixo de 20%; 
+- **RN09** — O pagamento da assinatura pode ser negociado entre os participantes em uma de duas modalidades, escolhida pelo titular na contratação e alterável de comum acordo: 
+- **RN10** — Os combos têm desconto proporcional à quantidade de itens do pacote, contido no teto de descontos acumulados (RN16). Havendo abundância de estoque, os combos podem ser priorizados como estratégia de escoamento, buscando neles o lucro principal; 
+- **RN11** — O tempo de entrega de equipamentos é calculado pela distância entre o local físico do estoque do fornecedor e a sessão que requisitou os recursos; 
+- **RN12** — Pagamentos atrasados ou não cumpridos estão sujeitos aos encargos abaixo, informados previamente nos Termos e no checkout: 
+- **RN13** — Em caso de excesso de chamados, cada atendimento ao vivo é limitado a 10 minutos por usuário, sem encerrar a demanda: a solicitação permanece aberta, é retomada em fila e respondida em até 5 dias (Decreto nº 7.962/2013); 
+- **RN14** — Fora do escopo do sistema: transações salariais e empresariais (folha de pagamento e operações financeiras internas); 
+- **RN15** — O estoque não deve chegar a zero em períodos de alta demanda. Deve haver estoque mínimo de segurança, com alerta de reposição; 
+- **RN16** — Os descontos são calculados conforme a relevância do motivo da redução, prevendo sempre deduções extras futuras, como cupons. Planos, combos, cupons e promoções são cumulativos entre si até o teto de 25% sobre o preço-base. A meia-entrada é direito legal, fica fora desse teto e não é cumulativa com outras promoções sobre o mesmo ingresso: o sistema aplica ao cliente o benefício mais vantajoso. O preço final nunca pode ficar abaixo do custo; 
+- **RN17** — Um percentual periódico de 5% a 10% do lucro líquido apurado é destinado a fundações carentes; 
+- **RN18** — A margem de lucro é sempre calculada sobre o custo original do item (antes de descontos). Os parâmetros iniciais são: margem de precificação de 60%; margem líquida mínima de 20% após todos os descontos aplicáveis; teto de 25% de descontos acumulados; e meia-entrada considerada em até 50% dos ingressos no cálculo (40% assegurados em lei, mais folga para beneficiários sem esse limite, como idosos). Os parâmetros valem para sessões, insumos, combos, aluguéis e planos e são configuráveis pela administração. Se a margem projetada ficar abaixo de 20%, o sistema alerta a administração. 
+- **RN19** — Sessões no mesmo local devem ter intervalo mínimo de 1 hora entre si, para preparação do espaço, fluxo de entrada e saída e controle de validade dos ingressos, o que impede seu reaproveitamento; 
+- **RN20** — As sessões reservadas por usuários devem durar até 5 horas; 
+- **RN21** — Os tickets de combo têm validade de até 30 minutos após o término da sessão, para casos de atraso e para o usuário gerenciar seus pedidos e status; 
+- **RN22** — A venda de ingressos e o acesso às sessões e aos filmes devem respeitar a classificação indicativa do Ministério da Justiça e Segurança Pública, com verificação de idade e das regras de acompanhamento por responsável vigentes; 
+- **RN23** — A meia-entrada em ingressos de sessões segue a Lei nº 12.933/2013 e o Decreto nº 8.537/2015: pagamento de 50% do preço efetivamente cobrado do público em geral por estudantes (com documento de identificação estudantil padronizado), pessoas com deficiência (e acompanhante, quando necessário) e jovens de 15 a 29 anos de baixa renda inscritos no CadÚnico, além de idosos, conforme o Estatuto da Pessoa Idosa. O direito é assegurado em 40% do total de ingressos de cada sessão (limite que a CineAstra pode superar), com exibição visível, em todos os pontos de venda, do total de ingressos e da quantidade restante de meia-entrada, e com comprovação na compra e na portaria (RF41). Não é cumulativa com outras promoções e não se aplica ao aluguel nem à assinatura de streaming; 
+- **RN24** — O cadastro exige verificação confiável de idade, sem depender apenas da autodeclaração. Contas de crianças e adolescentes de até 16 anos devem ser vinculadas à conta de um responsável legal, com ferramentas de supervisão parental, e compras e assinaturas de menores dependem do responsável. Dados coletados para verificação de idade não podem ser usados para publicidade nem para personalização de conteúdo (ECA Digital, Lei nº 15.211/2025); 
+- **RN25** — As páginas de oferta e contratação exibem, em local de destaque, nome empresarial, CNPJ, endereço e canais de atendimento da CineAstra, além das características essenciais, do preço total, das formas de pagamento e das condições da oferta. O cliente recebe sumário do contrato antes da contratação, confirmação imediata do recebimento do pedido e cópia do contrato ou comprovante para conservação (Decreto nº 7.962/2013); 
+- **RN26** — A assinatura pode ser cancelada a qualquer momento pelo sistema, cessando as cobranças futuras. Dentro de 7 dias da contratação, o valor pago é devolvido integralmente (CDC, art. 49). Após esse prazo, o reembolso proporcional do plano anual segue as regras dos Termos, sem cláusulas abusivas.

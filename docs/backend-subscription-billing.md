@@ -1,0 +1,15 @@
+# Cobrança recorrente de assinaturas — tarefa 40
+
+## Contrato e operação
+
+O job inicia na subida da API e varre por hora assinaturas renováveis cujo período terminou e cobranças vencidas, em lotes. Uma transação bloqueia a assinatura, registra `assinatura_ciclos` com UNIQUE `(id_assinatura, competencia)` e emite as cotas do modo vigente ou aprovado para a competência. Reexecução e processos concorrentes não podem emitir outro ciclo. O vencimento é o primeiro dia após `fim`; uma nova cobrança não concede benefício até a confirmação pelo fluxo de pagamentos. Assinatura cancelada ou sem renovação automática não emite novos ciclos.
+
+No dia seguinte ao vencimento, o job aplica uma multa de 2% sobre o principal uma vez e avisa o devedor. Juros simples são 1% por 30 dias corridos, proporcionais aos dias de atraso. A correção monetária é a razão dos números-índice mensais do IPCA/IBGE, tabela SIDRA 1737, variável 2266, entre o mês anterior ao vencimento e o último mês encerrado. Arredondamento monetário ocorre uma vez, em centavos. A correção pode ser negativa. Se o índice ainda não estiver publicado ou o IBGE falhar, o último valor de correção persiste; juros e multa continuam e uma execução posterior recalcula. Fonte: [IBGE IPCA](https://www.ibge.gov.br/estatisticas/economicas/precos-e-custos/9256-indice-de-precos-ao-consumidor-amplo.html) e [SIDRA 1737](https://sidra.ibge.gov.br/home/ipca/brasil). A multa segue o teto da [Lei 9.298/1996](https://www.planalto.gov.br/ccivil_03/leis/l9298.htm).
+
+No oitavo dia de atraso, a cobrança suspende somente os direitos do pagador; em divisão igual, os demais membros continuam ativos. No 31º dia, a participação do membro devedor sai ou, se o titular é o devedor, a assinatura é cancelada e a renovação desativada. Marcos são únicos por cobrança e notificação é deduplicada. Conta, suporte e itens comprados à parte permanecem acessíveis. Uma intenção de pagamento já enviada congela os encargos para não mudar o valor cobrado pelo gateway; pagamento confirmado liquida a dívida e remove apenas a suspensão causada pela cobrança, sem ressuscitar assinatura cancelada ou suspensão manual.
+
+`GET /api/subscriptions/{id}/charges` mantém URL e envelope; cada item inclui `fine`, `interest`, `correction`, `total`, `ipcaThrough`, `dueOn` e `paidAt`, sempre restrito ao pagador. `/api/payment-methods/.../charge` e `/api/payments` passam a cobrar o total atualizado. A migration 24 adiciona encargos, marcas de suspensão, ciclos e marcos. Não aplicada neste trabalho.
+
+## Limites de aceite
+
+Falta banco MySQL `_test` isolado para aplicar migrations 22–24 e verificar locks, FKs, UNIQUE, backfill e corridas reais. Falta gateway real/mandato autorizado para tentativa automática de débito, Pix Automático e conciliação financeira externa. O job gera cobrança para pagamento pelo fluxo já existente; não afirma ter capturado automaticamente. Avisos são internos, pois ainda não há adaptador geral de e-mail. Condições de cancelamento voluntário e eventual reembolso anual continuam vinculadas aos Termos e ao módulo de reembolso.

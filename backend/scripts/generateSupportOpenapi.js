@@ -1,0 +1,36 @@
+import {readFile,writeFile} from 'node:fs/promises';
+import {supportOperations} from '../routes/supportRoutes.js';
+const file=new URL('../docs/openapi.json',import.meta.url),spec=JSON.parse(await readFile(file,'utf8'));
+spec.info.version='1.30.0';
+spec.tags=[...spec.tags.filter(x=>x.name!=='Suporte'),{name:'Suporte',description:'Solicitações próprias, histórico e atendimento ADMIN.'}];
+const id={type:'string',pattern:'^[1-9][0-9]{0,19}$'},str=(max)=>({type:'string',minLength:1,maxLength:max});
+const obj=(properties,required=Object.keys(properties))=>({type:'object',additionalProperties:false,properties,required});
+const nullableDate={type:'string',nullable:true};
+const ticket=obj({id,clientId:id,attendantId:{...id,nullable:true},subject:str(150),status:{type:'string',enum:['ABERTO','EM_ATENDIMENTO','RESOLVIDO','FECHADO']},openedAt:str(32),responseDueAt:nullableDate,firstResponseAt:nullableDate,lastInteractionAt:nullableDate,closedAt:nullableDate,responseOverdue:{type:'boolean'}});
+const message=obj({id,authorId:{...id,nullable:true},role:{type:'string',enum:['CLIENTE','ADMIN']},message:str(10000),createdAt:nullableDate,origin:{type:'string',enum:['NOVA','LEGADO_ABERTURA','LEGADO_RESPOSTA']}});
+const paginated=item=>obj({items:{type:'array',items:item},pagination:obj({limit:{type:'integer'},nextCursor:{type:'string',nullable:true}})});
+const envelope=data=>obj({success:{type:'boolean',enum:[true]},data,requestId:{type:'string',format:'uuid'}});
+const body=(properties)=>({required:true,content:{'application/json':{schema:obj(properties)}}});
+const response=(data,example)=>({description:'Operação concluída',content:{'application/json':{schema:envelope(data),example:{success:true,data:example,requestId:'00000000-0000-4000-8000-000000000001'}}}});
+const sample={id:'1',clientId:'2',attendantId:null,subject:'Dúvida sobre pedido',status:'ABERTO',openedAt:'2026-10-11 12:00:00',responseDueAt:'2026-10-16 12:00:00',firstResponseAt:null,lastInteractionAt:'2026-10-11 12:00:00',closedAt:null,responseOverdue:false};
+const sampleMessage={id:'1',authorId:'2',role:'CLIENTE',message:'Preciso de ajuda com meu pedido.',createdAt:'2026-10-11 12:00:00',origin:'NOVA'};
+for(const route of supportOperations){
+    const op={operationId:route.operationId,tags:['Suporte'],summary:route.operationId.replaceAll('_',' '),security:[{bearerAuth:[]}],responses:{}};
+    if(route.path.includes('{id}'))op.parameters=[{name:'id',in:'path',required:true,schema:id}];
+    if(['list_own_support','admin_support_queue','support_message_history'].includes(route.operationId))op.parameters=[...(op.parameters??[]),{name:'limit',in:'query',schema:{type:'integer',minimum:1,maximum:100,default:20}},{name:'cursor',in:'query',schema:{type:'string',default:'0'}}];
+    if(route.operationId==='create_support_request')op.requestBody=body({subject:str(150),message:str(10000)});
+    if(route.operationId==='append_support_message')op.requestBody={required:true,content:{'application/json':{schema:obj({message:str(10000),mode:{type:'string',enum:['ASYNC','LIVE'],default:'ASYNC'}},['message'])}}};
+    if(route.operationId==='assign_support_request')op.requestBody=body({attendantId:id});
+    const kind=route.operationId;
+    const data=kind==='support_message_history'?paginated(message):['list_own_support','admin_support_queue'].includes(kind)?paginated(ticket):kind==='append_support_message'?obj({messageId:id,status:{type:'string'}}):kind==='start_support_live'?obj({sessionId:id,status:{type:'string'},expiresInSeconds:{type:'integer'}}):kind==='end_support_live'?obj({status:{type:'string'},queued:{type:'boolean'}}):ticket;
+    const example=kind==='support_message_history'?{items:[sampleMessage],pagination:{limit:20,nextCursor:null}}:['list_own_support','admin_support_queue'].includes(kind)?{items:[sample],pagination:{limit:20,nextCursor:null}}:kind==='append_support_message'?{messageId:'1',status:'ABERTO'}:kind==='start_support_live'?{sessionId:'1',status:'EM_ATENDIMENTO',expiresInSeconds:600}:kind==='end_support_live'?{status:'ABERTO',queued:true}:sample;
+    op.responses[kind==='create_support_request'||kind==='append_support_message'?'201':'200']=response(data,example);
+    for(const [code,name] of Object.entries({400:'BadRequest',401:'Unauthorized',403:'Forbidden',404:'NotFound',409:'Conflict',413:'PayloadTooLarge',422:'ValidationError',429:'RateLimited',500:'InternalError',503:'Unavailable'}))op.responses[code]={$ref:`#/components/responses/${name}`};
+    if(kind==='create_support_request')op.description='Recebimento imediato, prazo de manifestação em até cinco dias corridos e histórico append-only. Reembolso continua no serviço próprio /api/payments/{id}/refunds.';
+    if(kind==='assign_support_request')op.description='ADMIN atribui chamado ainda sem responsável a um ADMIN ativo. Repetição para o mesmo responsável devolve o estado atual; tentativa de substituir responsável retorna 409 SUPPORT_CONFLICT. Reatribuição não possui contrato nesta etapa.';
+    if(kind==='start_support_live'||kind==='end_support_live')op.description='Cada sessão ao vivo dura no máximo dez minutos. Fim/expiração devolve solicitação à fila ABERTO sem resolver a demanda.';
+    if(kind==='get_support_request'||kind==='support_message_history')op.description='CLIENTE acessa apenas solicitação própria; ADMIN acessa para atendimento.';
+    (spec.paths[route.path]??={})[route.method]=op;
+}
+await writeFile(file,`${JSON.stringify(spec,null,2)}\n`);
+console.info(`Suporte: ${supportOperations.length} operações documentadas.`);
