@@ -14,7 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { appearances } from "@/lib/themes"
+import { appearances, isNoirAppearance } from "@/lib/themes"
 
 const modes = [
   { value: "light", label: "Claro", icon: Sun },
@@ -45,7 +45,7 @@ export function AppearanceSelector() {
         <Palette aria-hidden="true" />
         <span className="hidden sm:inline"></span>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-64">
+      <DropdownMenuContent align="end" className="w-72 max-h-[min(80dvh,42rem)] overflow-y-auto">
         <DropdownMenuRadioGroup value={selectedMode} onValueChange={setTheme}>
           <DropdownMenuLabel>Modo</DropdownMenuLabel>
           {modes.map(({ value, label, icon: Icon }) => (
@@ -56,6 +56,12 @@ export function AppearanceSelector() {
           ))}
         </DropdownMenuRadioGroup>
 
+        {isNoirAppearance(appearance) && (
+          <p className="px-2 py-2 text-xs leading-relaxed text-muted-foreground">
+            Noir mantém a mesma aparência nos três modos. Sua preferência de modo
+            volta a valer ao escolher outro tema.
+          </p>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuRadioGroup value={appearance} onValueChange={setAppearance}>
           <DropdownMenuLabel>Tema visual</DropdownMenuLabel>

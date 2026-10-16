@@ -26,10 +26,18 @@ function subscribeToAppearance(callback) {
     callback()
   }
 
+  // Inclui a inicialização e alterações do atributo feitas fora do seletor.
+  const observer = new MutationObserver(callback)
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["data-theme"],
+  })
+
   window.addEventListener(APPEARANCE_CHANGE_EVENT, callback)
   window.addEventListener("storage", handleStorage)
 
   return () => {
+    observer.disconnect()
     window.removeEventListener(APPEARANCE_CHANGE_EVENT, callback)
     window.removeEventListener("storage", handleStorage)
   }

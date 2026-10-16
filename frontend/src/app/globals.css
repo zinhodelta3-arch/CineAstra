@@ -6,7 +6,9 @@
 @import "../styles/themes/violet-bloom.css";
 @import "../styles/themes/mocha-mousse.css";
 @import "../styles/themes/catppucin.css";
-@import "../styles//themes/Doomsday.css";
+@import "../styles/themes/Doomsday.css";
+@import "../styles/themes/noir.css";
+@import "../styles/themes/noir-grafico.css";
 
 @custom-variant dark (&:is(.dark *));
 
