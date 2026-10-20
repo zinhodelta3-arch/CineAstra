@@ -55,7 +55,7 @@ export function CartDrawer({ open, onOpenChange }) {
           <div className="border-t border-border/70 bg-card/60 p-5">
             <div className="mb-2 flex items-center justify-between text-sm text-muted-foreground"><span>Itens no carrinho</span><span>{itemCount}</span></div>
             <div className="mb-4 flex items-center justify-between"><span className="font-semibold">Subtotal</span><strong className="text-xl font-black">{money(total)}</strong></div>
-            <Button render={<Link href="/carrinho" onClick={() => onOpenChange(false)} />} className="mb-2 w-full" size="lg" disabled={items.length === 0}>Ver carrinho completo <ArrowRight className="size-4" /></Button>
+            <Button render={items.length > 0 ? <Link href="/carrinho" onClick={() => onOpenChange(false)} /> : undefined} className="mb-2 w-full" size="lg" disabled={items.length === 0}>Ver carrinho completo <ArrowRight className="size-4" /></Button>
             <p className="text-center text-[10px] text-muted-foreground">Você poderá revisar seu pedido antes de finalizar.</p>
           </div>
         </div>
