@@ -15,6 +15,7 @@ import {
 
 import { Button } from "@/components/ui/button"
 import { useCart } from "@/components/cart/cart-provider"
+import { CartDrawer } from "@/components/cart/cart-drawer"
 import {
   Sheet,
   SheetContent,
@@ -488,6 +489,7 @@ export default function AstraSnackPage() {
   const [selectedProduct, setSelectedProduct] = useState(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [quantity, setQuantity] = useState(1)
+  const [cartOpen, setCartOpen] = useState(false)
   const { itemCount: cartCount, addItem } = useCart()
 
   const filteredProducts = useMemo(() => {
@@ -651,7 +653,7 @@ export default function AstraSnackPage() {
 
       <button
         type="button"
-        onClick={() => cartCount > 0 && undefined}
+        onClick={() => setCartOpen(true)}
         className="fixed right-5 bottom-5 z-30 flex items-center gap-2 rounded-full border border-primary/40 bg-primary px-4 py-3 text-sm font-black text-primary-foreground shadow-xl transition-transform hover:-translate-y-1"
       >
         <ShoppingBag className="size-4" />
@@ -662,6 +664,8 @@ export default function AstraSnackPage() {
           </span>
         )}
       </button>
+
+      <CartDrawer open={cartOpen} onOpenChange={setCartOpen} />
 
       <ProductDrawer
         product={selectedProduct}
