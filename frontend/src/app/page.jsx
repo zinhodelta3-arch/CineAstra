@@ -1,6 +1,5 @@
 "use client";
 import Image from "next/image";
-import Footer from "@/components/Footer";
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Film, Ticket, Star, Clock3, CalendarDays, Play,
@@ -811,7 +810,6 @@ export default function CineAstraApp() {
         <CartDrawer items={cartItems} onRemove={handleRemoveFromCart} onClose={() => setIsCartOpen(false)} />
       )}
 
-      <Footer />
     </div>
   );
 }
