@@ -22,6 +22,10 @@ const LOGO_CONFIG = [
     keywords: ["violet"],
     src: "/Violet.png",
   },
+ {
+    keywords: ["doomsday"],
+    src: "/DOOMastra.png",
+  },
 ]
 
 const DEFAULT_LOGO = "/CineAstras.png"
