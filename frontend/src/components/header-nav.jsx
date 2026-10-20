@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useState } from "react"
-import { ArrowUpRight, CircleHelp, Film, House, MapPin, Menu, Popcorn, Sparkles, UserRound, UserPlus } from "lucide-react"
+import { ArrowUpRight, CircleHelp, Film, House, MapPin, Menu, Popcorn, Sparkles, UserRound, UserPlus, Crown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Sheet,
@@ -20,6 +20,7 @@ const navigation = [
   { label: "Cinemas", href: "/cinemas", icon: MapPin },
   { label: "AstraSnack", href: "/astrasnack", icon: Popcorn },
   { label: "Experiências", href: "/experiencias", icon: Sparkles },
+  { label: "Planos", href: "/planos", icon: Crown },
   { label: "Suporte", href: "/suporte", icon: CircleHelp },
 ]
 
