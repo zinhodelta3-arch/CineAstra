@@ -2,6 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { ShoppingCart } from "lucide-react";
+import { useCart } from "@/components/cart/cart-provider";
+import { CartDrawer } from "@/components/cart/cart-drawer";
 import { AppearanceSelector } from "@/components/appearance-selector";
 import { DesktopNavigation, MobileNavigation } from "@/components/header-nav";
 import { NotificationButton } from "@/components/notifications/notification-button";
@@ -46,6 +49,8 @@ function Barcode() {
 }
 export function Header() {
   const [logoSrc, setLogoSrc] = useState(DEFAULT_LOGO);
+  const [cartOpen, setCartOpen] = useState(false);
+  const { itemCount } = useCart();
   useEffect(() => {
     const updateLogo = () => setLogoSrc(getLogoByTheme(document.documentElement.getAttribute("data-theme")));
     updateLogo();
@@ -66,11 +71,25 @@ export function Header() {
           <div className="flex items-center gap-1 sm:gap-2">
             <div className="hidden items-center gap-2 sm:flex"><Link href="/login" className="rounded-md border border-border/70 px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-muted/50">Entrar</Link><Link href="/cadastro" className="rounded-md bg-primary px-3.5 py-2 text-xs font-bold text-primary-foreground shadow-sm transition-all hover:brightness-110">Criar conta</Link></div>
             <NotificationButton />
+            <button
+              type="button"
+              onClick={() => setCartOpen(true)}
+              aria-label={`Abrir carrinho, ${itemCount} itens`}
+              className="relative grid size-9 place-items-center rounded-md border border-border/70 text-foreground transition-colors hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-ring"
+            >
+              <ShoppingCart className="size-4" aria-hidden="true" />
+              {itemCount > 0 && (
+                <span className="absolute -right-1.5 -top-1.5 grid min-w-5 h-5 place-items-center rounded-full bg-primary px-1 text-[10px] font-black text-primary-foreground">
+                  {itemCount > 99 ? "99+" : itemCount}
+                </span>
+              )}
+            </button>
             <AppearanceSelector />
             <MobileNavigation />
           </div>
         </div>
       </div>
     </div>
+    <CartDrawer open={cartOpen} onOpenChange={setCartOpen} />
   </header>;
 }
