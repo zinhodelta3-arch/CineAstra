@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import TicketSelection from "@/components/checkout/TicketSelection";
+import { useCart } from "@/components/cart/cart-provider";
 import { DEMO_SESSION, validSession } from "@/components/checkout/ticket-state.mjs";
 
 // Ajuste somente esta rota para a próxima etapa do seu fluxo.
@@ -13,6 +14,7 @@ const ORDER_KEY = "cineastra:checkout:order";
 export default function IngressosPage() {
   const router = useRouter();
   const [session, setSession] = useState(DEMO_SESSION);
+  const { addItem } = useCart();
 
   useEffect(() => {
     try {
