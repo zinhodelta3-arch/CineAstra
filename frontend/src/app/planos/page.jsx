@@ -4,8 +4,7 @@ import Link from "next/link"
 import { useState } from "react"
 import {
   ArrowRight, Check, CheckCircle2, ChevronDown, CircleHelp, Clapperboard,
-  CreditCard, Crown, Gift, Heart, HelpCircle, Minus, Plus, ShieldCheck,
-  Sparkles, Ticket, Users, Wallet, X,
+  CreditCard, Crown, Gift, Heart, ShieldCheck, Sparkles, Ticket, Users, Wallet,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -39,7 +38,7 @@ const PLANS = [
     icon: Crown, accent: false, badge: "Experiência completa",
     benefits: [
       "Todo o streaming incluído, sem anúncios",
-      "4 ingressos de cinema grátis por mês",
+      "4 ingressos de cinema grátis por mês, válidos para sessões de qualquer tipo, incluindo 3D e outras modalidades disponíveis",
       "1 combo médio grátis por mês",
       "30% de desconto em combos AstraSnack",
       "Cupons exclusivos e ofertas antecipadas",
@@ -108,7 +107,7 @@ export default function PlanosPage() {
               <div className="p-5">
                 <div className="flex items-center justify-between gap-3"><div><div className="text-[10px] font-bold tracking-[.2em] text-primary uppercase">Clube CineAstra</div><div className="mt-1 text-lg font-black">Uma assinatura. Dois universos.</div></div><div className="grid size-11 place-items-center rounded-xl bg-primary/10 text-primary"><Clapperboard className="size-5" /></div></div>
                 <div className="mt-4 grid grid-cols-3 gap-2">
-                  {[["Cinema",Ticket],["Streaming",Clapperboard],["AstraSnack",Gift]].map(([label, Icon]) => <div key={label} className="rounded-lg border border-border/70 bg-background p-3 text-center"><Icon className="mx-auto size-4 text-primary" /><div className="mt-2 text-[10px] font-bold">{label}</div></div>)}
+                  {[[ "Cinema", Ticket ], [ "Streaming", Clapperboard ], [ "AstraSnack", Gift ]].map(([label, Icon]) => <div key={label} className="rounded-lg border border-border/70 bg-background p-3 text-center"><Icon className="mx-auto size-4 text-primary" /><div className="mt-2 text-[10px] font-bold">{label}</div></div>)}
                 </div>
               </div>
             </div>
@@ -131,7 +130,6 @@ export default function PlanosPage() {
           {PLANS.map((plan) => {
             const Icon = plan.icon
             const activePrice = priceFor(plan)
-            const isSelected = selected === plan.id
             return (
               <article key={plan.id} className={`relative flex h-full flex-col overflow-hidden rounded-2xl border bg-card/70 transition-all duration-300 hover:-translate-y-1 ${plan.accent ? "border-primary shadow-xl shadow-primary/10 lg:scale-[1.025]" : "border-border/70"}`}>
                 <div className={`px-6 pb-6 pt-6 ${plan.accent ? "bg-primary/10" : ""}`}>
@@ -193,7 +191,7 @@ export default function PlanosPage() {
               <div className="p-2 sm:p-4">
                 <div className="mb-5 flex items-center justify-between"><div><div className="text-[10px] font-black tracking-[.2em] text-primary uppercase">Plano em grupo</div><h3 className="f-display mt-1 text-3xl font-black">Sua sessão, sua turma.</h3></div><div className="grid size-12 place-items-center rounded-xl bg-primary/10 text-primary"><Heart className="size-6" /></div></div>
                 <div className="space-y-3">
-                  {[["Titular","Você escolhe o plano e gerencia a assinatura."],["Convite","Envie um convite para o contato do participante."],["Aceite","A pessoa aceita dentro do prazo de validade."],["Pagamento","Escolha pagador único ou divisão igual."],["Próximo ciclo","Cotas atualizadas e participantes notificados."]].map(([title, text], i) => <div key={title} className="flex gap-3"><div className="grid size-8 shrink-0 place-items-center rounded-full border border-primary/30 bg-primary/10 text-xs font-black text-primary">{i + 1}</div><div className="pb-2"><div className="text-sm font-bold">{title}</div><p className="text-xs leading-5 text-muted-foreground">{text}</p></div></div>)}
+                  {[[ "Titular", "Você escolhe o plano e gerencia a assinatura." ], [ "Convite", "Envie um convite para o contato do participante." ], [ "Aceite", "A pessoa aceita dentro do prazo de validade." ], [ "Pagamento", "Escolha pagador único ou divisão igual." ], [ "Próximo ciclo", "Cotas atualizadas e participantes notificados." ]].map(([title, text], i) => <div key={title} className="flex gap-3"><div className="grid size-8 shrink-0 place-items-center rounded-full border border-primary/30 bg-primary/10 text-xs font-black text-primary">{i + 1}</div><div className="pb-2"><div className="text-sm font-bold">{title}</div><p className="text-xs leading-5 text-muted-foreground">{text}</p></div></div>)}
                 </div>
               </div>
             )}
@@ -208,7 +206,7 @@ export default function PlanosPage() {
             <div className="rounded-xl border border-border/70 bg-card/60 p-5"><CreditCard className="size-5 text-primary" /><h3 className="mt-3 font-bold">Formas de pagamento</h3><p className="mt-1 text-sm leading-5 text-muted-foreground">Cartão de crédito, débito automático e Pix Automático, conforme disponibilidade do provedor de pagamento.</p></div>
             <div className="rounded-xl border border-border/70 bg-card/60 p-5"><ShieldCheck className="size-5 text-primary" /><h3 className="mt-3 font-bold">Cancelamento pelo sistema</h3><p className="mt-1 text-sm leading-5 text-muted-foreground">O titular poderá cancelar a assinatura e os participantes poderão sair do plano sem cancelar para os demais.</p></div>
             <div className="rounded-xl border border-border/70 bg-card/60 p-5"><Gift className="size-5 text-primary" /><h3 className="mt-3 font-bold">Benefícios por ciclo</h3><p className="mt-1 text-sm leading-5 text-muted-foreground">Ingressos, combos e cupons têm limites mensais e regras de uso específicas para cada plano.</p></div>
-            <div className="rounded-xl border border-border/70 bg-card/60 p-5"><ShieldCheck className="size-5 text-primary" /><h3 className="mt-3 font-bold">Regras de reembolso</h3><p className="mt-1 text-sm leading-5 text-muted-foreground">A política deve seguir os Termos do serviço e a legislação aplicável. As regras finais serão exibidas antes da contratação.</p></div>
+            <div className="rounded-xl border border-primary/30 bg-primary/5 p-5"><ShieldCheck className="size-5 text-primary" /><h3 className="mt-3 font-bold">7 dias para se arrepender</h3><p className="mt-1 text-sm leading-5 text-muted-foreground">Após a contratação, você terá 7 dias para exercer o direito de arrependimento e receber o reembolso integral do valor pago, conforme a legislação aplicável.</p></div>
           </div>
         </div>
       </section>
@@ -221,7 +219,7 @@ export default function PlanosPage() {
               ["O streaming está incluído em todos os planos?", "Sim. A proposta visual prevê acesso ao catálogo de streaming em todos os planos. Alguns títulos premium podem continuar disponíveis para aluguel avulso, conforme as regras que forem definidas."],
               ["Posso pagar mensal ou anualmente?", "Sim. Você pode alternar entre a opção mensal e anual na comparação de planos. Os preços apresentados são demonstrativos e precisam ser confirmados antes da publicação comercial."],
               ["Como funciona dividir o valor?", "O titular escolhe pagador único ou divisão igual. Na divisão igual, as cotas são recalculadas para o próximo ciclo após alterações nos participantes."],
-              ["Posso cancelar ou sair do plano?", "A proposta prevê cancelamento pelo titular e saída individual por participantes. Reembolsos e encerramento de cobranças devem seguir os Termos e a legislação aplicável."],
+              ["Posso cancelar ou sair do plano?", "A proposta prevê cancelamento pelo titular e saída individual por participantes. O direito de arrependimento em até 7 dias da contratação permite solicitar o reembolso integral do valor pago, conforme a legislação aplicável. Para outros cancelamentos, as regras serão informadas nos Termos do serviço."],
               ["Quais formas de pagamento estarão disponíveis?", "Cartão de crédito, débito automático e Pix Automático são opções previstas. A disponibilidade real depende da integração com o provedor de pagamento."],
             ].map(([q, a], index) => <div key={q} className="overflow-hidden rounded-xl border border-border/70 bg-card/70"><button type="button" aria-expanded={faqOpen === index} onClick={() => setFaqOpen(faqOpen === index ? -1 : index)} className="flex w-full items-center justify-between gap-4 p-4 text-left text-sm font-bold sm:p-5">{q}<ChevronDown className={`size-4 shrink-0 text-primary transition-transform ${faqOpen === index ? "rotate-180" : ""}`} /></button>{faqOpen === index && <div className="border-t border-dashed border-border px-4 py-4 text-sm leading-6 text-muted-foreground sm:px-5">{a}</div>}</div>)}
           </div>
