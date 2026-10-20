@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { useCart } from "@/components/cart/cart-provider"
 import {
   Sheet,
   SheetContent,
@@ -487,7 +488,7 @@ export default function AstraSnackPage() {
   const [selectedProduct, setSelectedProduct] = useState(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [quantity, setQuantity] = useState(1)
-  const [cartCount, setCartCount] = useState(0)
+  const { itemCount: cartCount, addItem } = useCart()
 
   const filteredProducts = useMemo(() => {
     return PRODUCTS.filter((product) => {
@@ -507,8 +508,8 @@ export default function AstraSnackPage() {
     setDrawerOpen(true)
   }
 
-  const addToCart = (_, amount) => {
-    setCartCount((current) => current + amount)
+  const handleAddToCart = (product, amount) => {
+    addItem({ ...product, type: "snack", category: product.category || "AstraSnack" }, amount)
     setDrawerOpen(false)
   }
 
@@ -668,7 +669,7 @@ export default function AstraSnackPage() {
         onOpenChange={setDrawerOpen}
         quantity={quantity}
         setQuantity={setQuantity}
-        onAdd={addToCart}
+        onAdd={handleAddToCart}
       />
     </main>
   )
