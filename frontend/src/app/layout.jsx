@@ -12,6 +12,7 @@ import { ThemeProvider } from "@/components/providers/theme-provider";
 import AppearanceInitializer from "@/components/providers/appearance-initializer";
 import { DEFAULT_APPEARANCE } from "@/lib/themes";
 import Footer from "@/components/Footer";
+import { CartProvider } from "@/components/cart/cart-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -60,9 +61,11 @@ export default function RootLayout({ children }) {
       <body className="flex min-h-full flex-col">
         <AppearanceInitializer />
         <ThemeProvider>
-          <Header />
-          {children}
-          <Footer />
+          <CartProvider>
+            <Header />
+            {children}
+            <Footer />
+          </CartProvider>
         </ThemeProvider>
       </body>
     </html>
