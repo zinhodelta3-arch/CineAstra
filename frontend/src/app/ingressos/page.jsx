@@ -6,8 +6,6 @@ import TicketSelection from "@/components/checkout/TicketSelection";
 import { useCart } from "@/components/cart/cart-provider";
 import { DEMO_SESSION, validSession } from "@/components/checkout/ticket-state.mjs";
 
-// Ajuste somente esta rota para a próxima etapa do seu fluxo.
-const NEXT_STEP = "/pagamento";
 const SESSION_KEY = "cineastra:checkout:session";
 const ORDER_KEY = "cineastra:checkout:order";
 
@@ -32,7 +30,19 @@ export default function IngressosPage() {
     } catch {
       throw new Error("Não foi possível guardar sua seleção neste navegador. Tente novamente.");
     }
-    router.push(NEXT_STEP);
+    for (const ticket of order.tickets) {
+      addItem({
+        id: `ticket-${order.session.id}-${ticket.id}`,
+        type: "ticket",
+        name: ticket.name,
+        category: "Ingresso de cinema",
+        description: `${order.session.movie.title} • ${order.session.cinema.name}`,
+        details: `${order.session.dateLabel} às ${order.session.time} • Assentos: ${order.session.seats.join(", ")}`,
+        price: ticket.unitPriceCents / 100,
+        image: order.session.movie.poster || "",
+      }, ticket.quantity);
+    }
+    router.push("/carrinho");
   }
 
   return <TicketSelection key={`${session.id}:${session.seats.join(",")}`} session={session} onBack={() => router.back()} onContinue={handleContinue} />;
