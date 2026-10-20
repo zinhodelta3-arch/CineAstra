@@ -23,7 +23,7 @@ export default function CarrinhoPage() {
 
         {items.length === 0 ? (
           <section className="grid min-h-72 place-items-center rounded-2xl border border-dashed border-border bg-card/30 p-8 text-center">
-            <div className="max-w-sm"><div className="mx-auto mb-4 grid size-16 place-items-center rounded-2xl bg-primary/10 text-primary"><ShoppingBag className="size-7" /></div><h2 className="text-xl font-black">Ainda não há itens por aqui</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Adicione produtos do AstraSnack ao seu pedido. O carrinho também está preparado para receber ingressos.</p><Button asChild className="mt-5"><Link href="/astrasnack">Explorar AstraSnack <ArrowRight className="size-4" /></Link></Button></div>
+            <div className="max-w-sm"><div className="mx-auto mb-4 grid size-16 place-items-center rounded-2xl bg-primary/10 text-primary"><ShoppingBag className="size-7" /></div><h2 className="text-xl font-black">Ainda não há itens por aqui</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Adicione produtos do AstraSnack ao seu pedido. O carrinho também está preparado para receber ingressos.</p><Button render={<Link href="/astrasnack" />} className="mt-5">Explorar AstraSnack <ArrowRight className="size-4" /></Button></div>
           </section>
         ) : (
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
@@ -45,7 +45,7 @@ export default function CarrinhoPage() {
               <div className="my-5 space-y-3 border-y border-dashed border-border py-4 text-sm"><div className="flex justify-between text-muted-foreground"><span>Quantidade de itens</span><span>{itemCount}</span></div><div className="flex justify-between text-muted-foreground"><span>Subtotal</span><span>{money(total)}</span></div><div className="flex justify-between text-muted-foreground"><span>Taxas</span><span>A calcular</span></div><div className="flex justify-between pt-1 text-base font-black"><span>Total parcial</span><span>{money(total)}</span></div></div>
               <Button className="w-full" size="lg" onClick={() => router.push("/pagamento")}><span>Finalizar compra</span><ArrowRight className="size-4" /></Button>
               <p className="mt-3 text-center text-[10px] leading-4 text-muted-foreground">Confira os itens antes de prosseguir para a próxima etapa.</p>
-              <Button asChild variant="outline" className="mt-3 w-full"><Link href="/astrasnack">Continuar comprando</Link></Button>
+              <Button render={<Link href="/astrasnack" />} variant="outline" className="mt-3 w-full">Continuar comprando</Button>
             </aside>
           </div>
         )}
