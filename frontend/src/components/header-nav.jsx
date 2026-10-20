@@ -16,8 +16,8 @@ import { AppearanceSelector } from "@/components/appearance-selector"
 
 const navigation = [
   { label: "Início", href: "/", icon: House },
-  { label: "Filmes", icon: Film },
-  { label: "Cinemas", icon: MapPin },
+  { label: "Filmes", href: "/#em-cartaz", icon: Film },
+  { label: "Cinemas", href: "/cinemas", icon: MapPin },
   { label: "AstraSnack", href: "/astrasnack", icon: Popcorn },
   { label: "Experiências", href: "/experiencias", icon: Sparkles },
   { label: "Suporte", href: "/suporte", icon: CircleHelp },
