@@ -124,27 +124,50 @@ export default function StreamingSupportPage() {
                 <span className="flex items-center gap-2"><Smartphone className="size-4 text-primary" /> Ajuda para seus dispositivos</span>
               </div>
             </div>
-            <div className="relative mx-auto w-full max-w-md">
-              <div className="absolute -inset-4 rotate-3 rounded-[2rem] border border-dashed border-primary/30" />
-              <div className="relative overflow-hidden rounded-2xl border border-border/70 bg-card shadow-2xl shadow-primary/10">
-                <div className="relative flex aspect-[4/3] items-center justify-center overflow-hidden bg-gradient-to-br from-secondary/50 via-card to-background">
-                  <div className="absolute inset-0 opacity-40" style={{ backgroundImage: "radial-gradient(circle at 20% 20%, hsl(var(--primary) / .35), transparent 35%), radial-gradient(circle at 80% 75%, hsl(var(--primary) / .2), transparent 40%)" }} />
-                  <div className="relative grid size-36 place-items-center rounded-[2rem] border border-primary/30 bg-background/70 shadow-xl shadow-primary/10 backdrop-blur-sm sm:size-44">
-                    <div className="absolute inset-3 rounded-[1.5rem] border border-dashed border-primary/25" />
-                    <Clapperboard className="size-14 text-primary sm:size-16" />
-                    <span className="absolute -bottom-3 rounded-full border border-primary/30 bg-card px-4 py-1.5 text-[10px] font-black tracking-[.2em] text-primary uppercase">Central de ajuda</span>
+            <div className="relative mx-auto w-full max-w-md lg:max-w-lg">
+              <div className="absolute -inset-5 rounded-[2rem] bg-primary/5 blur-2xl" />
+              <div className="absolute -right-8 -top-7 h-36 w-36 rounded-full bg-primary/10 blur-3xl" />
+              <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-card/95 shadow-2xl shadow-black/30 backdrop-blur-sm">
+                <div className="relative overflow-hidden border-b border-border/70 px-5 pb-6 pt-5 sm:px-6 sm:pb-7">
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent" />
+                  <div className="relative flex items-start gap-4">
+                    <div className="grid size-14 shrink-0 place-items-center rounded-2xl border border-primary/20 bg-primary/10 text-primary sm:size-16">
+                      <Clapperboard className="size-7 sm:size-8" />
+                    </div>
+                    <div className="min-w-0 pt-1">
+                      <div className="text-[10px] font-black tracking-[.24em] text-primary uppercase">Central de ajuda</div>
+                      <h2 className="mt-2 text-xl font-black leading-tight sm:text-2xl">Respostas rápidas para o que você precisa.</h2>
+                      <p className="mt-3 text-sm leading-6 text-muted-foreground">Dicas para voltar ao play e aproveitar seus filmes e séries sem interrupções.</p>
+                      <button type="button" onClick={() => document.getElementById("central-ajuda")?.scrollIntoView({ behavior: "smooth" })} className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-primary transition hover:gap-3">
+                        Ver perguntas frequentes <ArrowRight className="size-4" />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="relative mt-6 flex items-center gap-2 overflow-hidden rounded-lg border border-border/60 bg-background/60 p-3">
+                    <CirclePlay className="size-4 shrink-0 text-primary" />
+                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted"><div className="h-full w-[68%] rounded-full bg-primary/80" /></div>
+                    <span className="text-[10px] font-semibold text-muted-foreground">Tudo pronto para dar play</span>
                   </div>
                 </div>
-                <div className="p-5">
-                  <div className="text-[10px] font-bold tracking-[.2em] text-primary uppercase">CineAstra Streaming</div>
-                  <div className="mt-1 text-lg font-black">Vamos resolver isso juntos.</div>
-                  <div className="mt-4 grid grid-cols-3 gap-2">
-                    {[[ "Reprodução", CirclePlay ], [ "Dispositivos", Tv ], [ "Conta", CircleUserRound ]].map(([label, Icon]) => <div key={label} className="rounded-lg border border-border/70 bg-background p-3 text-center"><Icon className="mx-auto size-4 text-primary" /><div className="mt-2 text-[10px] font-bold">{label}</div></div>)}
-                  </div>
+                <div className="grid grid-cols-3 gap-2 p-3 sm:gap-3 sm:p-4">
+                  {[
+                    ["Reprodução", CirclePlay, "Vídeo e carregamento", "reproducao"],
+                    ["Imagem e áudio", MonitorPlay, "Som, idioma e legendas", "qualidade"],
+                    ["Minha conta", CircleUserRound, "Acesso e assinatura", "conta"],
+                  ].map(([label, Icon, description, category]) => (
+                    <button key={label} type="button" onClick={() => selectCategory(category)} className="group min-w-0 rounded-xl border border-border/70 bg-background/70 p-3 text-left transition hover:border-primary/50 hover:bg-primary/5 sm:p-4">
+                      <Icon className="size-5 text-primary transition group-hover:-translate-y-0.5" />
+                      <div className="mt-3 text-xs font-bold leading-4">{label}</div>
+                      <div className="mt-1 hidden text-[10px] leading-4 text-muted-foreground sm:block">{description}</div>
+                    </button>
+                  ))}
+                </div>
+                <div className="flex items-center justify-between border-t border-border/70 px-4 py-3 text-[10px] font-semibold text-muted-foreground sm:px-5">
+                  <span className="flex items-center gap-2"><span className="size-1.5 rounded-full bg-primary" /> CineAstra Streaming</span>
+                  <span>Seu próximo play começa aqui</span>
                 </div>
               </div>
-            </div>
-          </div>
+            </div>          </div>
         </div>
       </section>
 

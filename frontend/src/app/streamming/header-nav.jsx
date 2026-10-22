@@ -17,7 +17,7 @@ import { AppearanceSelector } from "@/components/appearance-selector"
 export const streamNavigation = [
   { label: "Filmes", href: "/streamming", icon: Film },
   { label: "Minha CineAstra", href: "/streamming/MeuAstra", icon: UserRound },
-  { label: "Suporte", href: "/suporte", icon: CircleHelp },
+  { label: "Suporte", href: "/suporte-streaming", icon: CircleHelp },
 ]
 
 /* Linha de destacar com entalhes semicirculares nas duas pontas */
