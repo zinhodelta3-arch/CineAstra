@@ -23,7 +23,7 @@ function StreammingHeader({ onLogout, notifications = [] }) {
   const navigation = [
     { label: "Filmes", href: "/streamming", icon: Film },
     { label: "Minha CineAstra", href: "/streamming/MeuAstra", icon: UserRound },
-    { label: "Suporte", href: "/suporte", icon: CircleHelp },
+    { label: "Suporte", href: "/suporte-streaming", icon: CircleHelp },
   ];
 
   const isActive = (href) => {
