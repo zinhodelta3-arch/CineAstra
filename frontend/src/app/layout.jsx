@@ -13,6 +13,7 @@ import AppearanceInitializer from "@/components/providers/appearance-initializer
 import { DEFAULT_APPEARANCE } from "@/lib/themes";
 import Footer from "@/components/Footer";
 import { CartProvider } from "@/components/cart/cart-provider";
+import { CineAstraProvider } from "@/components/cineastra-player/CineAstraProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -62,9 +63,11 @@ export default function RootLayout({ children }) {
         <AppearanceInitializer />
         <ThemeProvider>
           <CartProvider>
-            <Header />
-            {children}
-            <Footer />
+            <CineAstraProvider>
+              <Header />
+              {children}
+              <Footer />
+            </CineAstraProvider>
           </CartProvider>
         </ThemeProvider>
       </body>

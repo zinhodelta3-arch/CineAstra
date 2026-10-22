@@ -1,5 +1,6 @@
 "use client";
 import Image from "next/image";
+import { useVideoPlayer } from "@/components/cineastra-player/VideoProvider";
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Film, Ticket, Star, Clock3, CalendarDays, Play,
@@ -587,35 +588,6 @@ function CombosSection({ onAddToCart }) {
 }
 
 /* ============ MODAIS ============ */
-function TrailerModal({ movie, onClose }) {
-  useEffect(() => {
-    const onKey = (e) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
-  return (
-    <div role="dialog" aria-modal="true" aria-label={`Trailer de ${movie.title}`} className="fixed inset-0 z-50 bg-background/90 backdrop-blur-md flex flex-col items-center justify-center p-4" onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} className="relative w-full max-w-5xl">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <span className="text-xs font-semibold text-primary block">Trailer oficial</span>
-            <h3 className="f-display text-3xl font-black text-foreground">{movie.title}</h3>
-          </div>
-          <button type="button" onClick={onClose} aria-label="Fechar" className="p-2 text-muted-foreground hover:text-foreground rounded-full"><X className="w-6 h-6" /></button>
-        </div>
-        <div className="flex gap-2 bg-card p-3 rounded-md border border-border">
-          <div className="perf-v hidden sm:block rounded-sm" aria-hidden="true" />
-          <div className="aspect-video w-full bg-black">
-            <iframe src={`${movie.trailerUrl}?autoplay=1`} title={movie.title} className="w-full h-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
-          </div>
-          <div className="perf-v hidden sm:block rounded-sm" aria-hidden="true" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function TicketBookingModal({ movie, onClose, onAddToCart }) {
   const sessions = movie.sessions?.length ? movie.sessions : ["18:00", "20:30"];
   const [date, setDate] = useState("Hoje");
@@ -761,7 +733,8 @@ function CartDrawer({ items, onRemove, onClose }) {
 
 /* ============ PÁGINA ============ */
 export default function CineAstraApp() {
-  const [trailerMovie, setTrailerMovie] = useState(null);
+  const { openVideo } = useVideoPlayer();
+  const setTrailerMovie = (movie) => openVideo(movie, { type: "trailer" });
   const [bookingMovie, setBookingMovie] = useState(null);
   const [cartItems, setCartItems] = useState([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -787,7 +760,6 @@ export default function CineAstraApp() {
       <SectionDivider />
       <CombosSection onAddToCart={handleAddToCart} />
 
-      {trailerMovie && <TrailerModal movie={trailerMovie} onClose={() => setTrailerMovie(null)} />}
       {bookingMovie && (
         <TicketBookingModal
           key={bookingMovie.id}

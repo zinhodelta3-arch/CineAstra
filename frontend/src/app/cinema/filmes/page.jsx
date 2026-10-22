@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { MOVIES, CINEMAS } from "./movies";
 import styles from "./filmes.module.css";
+import { useVideoPlayer } from "@/components/cineastra-player/VideoProvider";
 import "./cineastra-theme.css";
 
 const SECTIONS = [
@@ -79,6 +80,7 @@ function MoviePoster({ movie, onSelect, index }) {
 }
 
 export default function CinemaMoviesPage() {
+  const { openVideo } = useVideoPlayer();
   const [section, setSection] = useState("em-cartaz");
   const [cinema, setCinema] = useState("todos");
   const [genre, setGenre] = useState("Todos");
@@ -212,6 +214,7 @@ export default function CinemaMoviesPage() {
                 <div className="my-5 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                   <AgeRating age={selectedMovie.age} /><span>{durationLabel(selectedMovie.duration)}</span><span>{selectedMovie.genres.join(" · ")}</span>
                 </div>
+                <Button variant="outline" className="mb-5" onClick={() => { const movie = selectedMovie; setSelectedMovie(null); openVideo(movie, { type: "trailer" }); }}>Assistir trailer</Button>
                 <div className={`${styles.tear} pt-4`}>
                   <p className="flex items-center gap-2 text-sm font-semibold"><Ticket className="size-4 text-primary" aria-hidden="true" />{selectedMovie.status === "em-breve" ? "Programação em breve" : "Sessões de demonstração"}</p>
                   {selectedMovie.sessions.length > 0 ? <div className="mt-3 flex flex-wrap gap-2">{selectedMovie.sessions.map((time) => <span key={time} className="border border-border bg-muted/40 px-3 py-2 text-xs font-bold">{time}</span>)}</div> : <p className="mt-3 text-xs leading-relaxed text-muted-foreground">Os horários aparecerão aqui quando a programação estiver disponível.</p>}

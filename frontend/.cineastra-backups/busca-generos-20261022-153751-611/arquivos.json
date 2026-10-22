@@ -1,0 +1,42 @@
+﻿[
+    {
+        "path":  "src\\app\\streamming\\page.jsx",
+        "existed":  true
+    },
+    {
+        "path":  "src\\app\\streamming\\busca\\page.jsx",
+        "existed":  false
+    },
+    {
+        "path":  "src\\app\\streamming\\generos\\page.jsx",
+        "existed":  false
+    },
+    {
+        "path":  "src\\components\\stream-header-nav.jsx",
+        "existed":  false
+    },
+    {
+        "path":  "src\\components\\stream-header.jsx",
+        "existed":  false
+    },
+    {
+        "path":  "src\\components\\stream-discovery\\film-art.jsx",
+        "existed":  false
+    },
+    {
+        "path":  "src\\components\\stream-discovery\\stream-discovery.css",
+        "existed":  false
+    },
+    {
+        "path":  "src\\components\\stream-discovery\\stream-discovery.jsx",
+        "existed":  false
+    },
+    {
+        "path":  "src\\lib\\stream-catalog.js",
+        "existed":  false
+    },
+    {
+        "path":  "src\\lib\\stream-search.js",
+        "existed":  false
+    }
+]
